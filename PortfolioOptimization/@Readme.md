@@ -8,13 +8,13 @@ This repository contains code that analyzes such techniques and applies various 
 </br>
 **Structure**</br>
 </br>
-**Dashboard and Test Files**</br>
+**1. Dashboard and Test Files**</br>
 Provide tools for analyzing the risk characteristics of portfolios before and after applying compression techniques.</br>
 </br>
-**LPcomp Files**</br>
+**2. LPcomp Files**</br>
 Implement portfolio compression using linear programming, optimizing for minimal notional while preserving risk factors.</br>
 </br>
-**Solocomp Files**</br>
+**3. Solocomp Files**</br>
 Apply offsetting and contract adjustment methods to reduce portfolio size, reflecting more practical, rule-based compression strategies.</br>
 </br>
 **Applications**</br>
