@@ -5,6 +5,7 @@ This project and its associated codebase are designed to support valuation and r
 By leveraging this code—or selected modules within—it is possible not only to value other types of derivatives but also to analyze portfolios consisting of tens of thousands of financial contracts in approximately 10 minutes.</br>
 </br>
 **Structure**</br>
+</br>
 The core of the project is the simulator file, which orchestrates the execution of all underlying modules. Each module is designed with a clear separation of functionality:</br>
 </br>
 **1. Calendar Module**</br>
@@ -20,5 +21,6 @@ Constructs interest rate curves for up to 20 years, tailored for different purpo
 Calculate the final valuation amounts and risk metrics across multiple scenarios, based on the inputs and curves generated in previous steps.</br>
 </br>
 **Applications**</br>
+</br>
 The modular structure makes it easy to customize and extend for various financial instruments or portfolio types. Whether you're performing real-time valuation, stress testing, or large-scale portfolio risk analysis, this framework offers a flexible and high-performance solution.
 
