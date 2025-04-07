@@ -1,0 +1,74 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+library(tidyverse)
+library(readxl)
+library(plotly)
+
+```{r}
+Rate_diff <- read.csv('Rate_2008.csv')
+PCA <- prcomp(Rate_diff[, -c(1:3)], center = TRUE, scale = FALSE)
+rotation <- PCA$rotation[, 1:3]
+colmeans <- colMeans(Rate_diff[, -c(1:3)])
+sds <- PCA$sdev[1:3]
+PC_shock <- sqrt(5) * qnorm(0.999, 0, 1) * rotation %*% diag(sds)
+
+PCA_scnDOO <- colmeans * 5 + PC_shock[ ,1]
+PCA_scnUOO <- colmeans * 5 - PC_shock[ ,1]
+PCA_scnDUO <- colmeans * 5 + PC_shock[ ,1] - PC_shock[ ,2]
+PCA_scnDDO <- colmeans * 5 + PC_shock[ ,1] + PC_shock[ ,2]
+PCA_scnUDO <- colmeans * 5 - PC_shock[ ,1] + PC_shock[ ,2]
+PCA_scnUUO <- colmeans * 5 - PC_shock[ ,1] - PC_shock[ ,2]
+
+PCA_scnDDD <- colmeans * 5 + PC_shock[ ,1] + PC_shock[ ,2] - PC_shock[ ,3]
+PCA_scnDDU <- colmeans * 5 + PC_shock[ ,1] + PC_shock[ ,2] + PC_shock[ ,3]
+PCA_scnDUD <- colmeans * 5 + PC_shock[ ,1] - PC_shock[ ,2] - PC_shock[ ,3]
+PCA_scnDUU <- colmeans * 5 + PC_shock[ ,1] - PC_shock[ ,2] + PC_shock[ ,3]
+PCA_scnUUU <- colmeans * 5 - PC_shock[ ,1] - PC_shock[ ,2] + PC_shock[ ,3]
+PCA_scnUUD <- colmeans * 5 - PC_shock[ ,1] - PC_shock[ ,2] - PC_shock[ ,3]
+PCA_scnUDU <- colmeans * 5 - PC_shock[ ,1] + PC_shock[ ,2] + PC_shock[ ,3]
+PCA_scnUDD <- colmeans * 5 - PC_shock[ ,1] + PC_shock[ ,2] - PC_shock[ ,3]
+
+PCA_scn <- data.frame(cbind(
+    c(
+        "PCA_scnDOO",
+        "PCA_scnUOO",
+        "PCA_scnDUO",
+        "PCA_scnDDO",
+        "PCA_scnUDO",
+        "PCA_scnUUO",
+        "PCA_scnDDD",
+        "PCA_scnDDU",
+        "PCA_scnDUD",
+        "PCA_scnDUU",
+        "PCA_scnUUU",
+        "PCA_scnUUD",
+        "PCA_scnUDU",
+        "PCA_scnUDD"
+    ),
+    rbind(
+        PCA_scnDOO,
+        PCA_scnUOO,
+        PCA_scnDUO,
+        PCA_scnDDO,
+        PCA_scnUDO,
+        PCA_scnUUO,
+        PCA_scnDDD,
+        PCA_scnDDU,
+        PCA_scnDUD,
+        PCA_scnDUU,
+        PCA_scnUUU,
+        PCA_scnUUD,
+        PCA_scnUDU,
+        PCA_scnUDD
+    )
+))
+
+write_excel_csv(PCA_scn, 'PCA_scn0808.csv')
+
+```
+
+
+
+

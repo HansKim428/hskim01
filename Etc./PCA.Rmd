@@ -1,0 +1,207 @@
+---
+title: "PCA Study"
+author: "*Hans Kim*"
+date: "2022-08-01"
+output: html_notebook
+---
+
+library(tidyverse)
+
+library(ggcorrplot)
+
+library(stats)
+
+library(scatterplot3d)
+
+library(plotly)
+
+library(pca3d)
+
+library(lubridate)
+
+# Correlation Matrix & Plot
+
+```{r}
+#Read Rates file
+Rate_raw <- read.csv('Rate.csv')
+
+# Make Correlation Matrix by function cor()
+CorMatrix <- cor(Rate_raw[,c(2:19)])
+
+# Plot Correlation Matrix by function ggcorrplot() and fill viridis
+ggcorrplot(CorMatrix) + scale_fill_viridis_c(option="viridis")
+```
+
+```{r}
+# Make Covariance Matrix by function cov()
+CovMatrix <- cov(Rate_raw[,c(2:19)])
+
+# Plot Covariance Matrix by function ggcorrplot() and fill inferno
+ggcorrplot(CovMatrix) + scale_fill_viridis_c(option="inferno")
+```
+
+```{r Entire Period Rate_raw Normalized Correlation}
+# Centering & Unit Variance
+Rate_raw_centered <- as.matrix(Rate_raw[, -1])
+Entire_mean <- apply(Rate_raw_centered, 2, mean)
+Entire_sd <- apply(Rate_raw_centered, 2, sd)
+
+Rate_raw_centered <- (Rate_raw_centered - t(Entire_mean)) %*% diag(1/Entire_sd)
+
+### Simple scale function : scale(Rate_raw[, -1])
+
+CorMatrix_centered <- cor(Rate_raw_centered)
+
+ggcorrplot(CorMatrix_centered) + scale_fill_viridis_c(option="viridis")
+
+## cor((x1-m1)/sd1, (x2-m2)/sd2)) == |sd1 * sd2| / (sd1 * sd2) * cor(x1, x2) 
+##                                == cor(x1, x2)
+```
+
+```{r Entire Period Rate_raw Normalized Covariance}
+CovMatrix_centered <- cov(Rate_raw_centered[ ,c(2:19)])
+
+ggcorrplot(CovMatrix_centered) + scale_fill_viridis_c(option="inferno")
+
+## cov((x1-m1)/sd1, (x2-m2)/sd2)) == cov(x1, x2) / (sd1 * sd2) == cor(x1, x2)
+```
+
+```{r Entire Period Rate_diff Correlation }
+Rate_diff <- Rate_raw[-1, -1] - lag(Rate_raw, 1)[-1, -1]
+
+CorMatrix_diff <- cor(Rate_diff)
+
+ggcorrplot(CorMatrix_diff) + scale_fill_viridis_c(option="viridis")
+
+```
+
+```{r princomp() w/ cor Matirx}
+PCA_Entire_princomp <- princomp(Rate_diff[, -c(1, 2)],
+                                cor = T)
+
+
+summary(PCA_Entire_princomp)
+```
+
+```{r princomp() w/ cov Matirx}
+PCA_Entire_princomp2 <- princomp(Rate_diff[, -c(1, 2)],
+                                 cor = F)
+
+
+summary(PCA_Entire_princomp2)
+```
+
+```{r prcomp() w/o centered}
+PCA_Entire_prcomp <- prcomp(Rate_diff[, -c(1, 2)],
+                            center = FALSE)
+
+
+summary(PCA_Entire_prcomp)
+```
+
+```{r prcomp() w/ centered}
+PCA_Entire_prcomp2 <- prcomp(Rate_diff[, -c(1, 2)],
+                             center = TRUE)
+
+
+summary(PCA_Entire_prcomp2)
+
+#질문1. only centering의 의미
+```
+
+```{r prcomp w/ centered & unit_var}
+PCA_Entire_prcomp3 <- prcomp(Rate_diff[, -c(1, 2)],
+                             center = TRUE,
+                             scale = TRUE)
+
+
+summary(PCA_Entire_prcomp3)
+```
+
+```{r Screeplot_Entire}
+screeplot(PCA_Entire_prcomp2, type = 'lines', pch = 19,
+          npcs = 6)
+```
+
+```{r PCA_Biplot}
+biplot(PCA_Entire_prcomp2)
+```
+
+```{r rotation;variable loadings}
+PCA_Entire_prcomp2$rotation[, 1:8]
+
+#PC1 = (-0.1006642) * 6M + (-0.1492236) * 9M + ...
+```
+
+```{r retx; value of rotated data}
+# centered data * rotation matirx
+all.equal(as.matrix(scale(Rate_diff[, -c(1, 2)], scale = FALSE)) %*%
+          PCA_Entire_prcomp2$rotation,
+          PCA_Entire_prcomp2$x)
+
+New_Rate <- data.frame(PCA_Entire_prcomp2$x[, 1:3])
+#2007.1.4 : 0.1280196577 * PC1 + -2.641239e-02 * PC2 + ...
+
+New_Rate
+          
+```
+
+```{r 3D scatter Plot}
+PC1 <- PCA_Entire_prcomp2$x[, 1]
+PC2 <- PCA_Entire_prcomp2$x[, 2]
+PC3 <- PCA_Entire_prcomp2$x[, 3]
+
+rotation1 <- PCA_Entire_prcomp2$rotation[, 1]
+rotation2 <- PCA_Entire_prcomp2$rotation[, 2]
+rotation3 <- PCA_Entire_prcomp2$rotation[, 3]
+
+
+Plot3D <- scatterplot3d(PC1, PC2, PC3)
+Plot3D$points3d(rotation1, rotation2, rotation3, bg = 'red',
+                pch = 21, cex = 2, type = 'h')
+```
+
+```{r 3D Biplot}
+pca3d(PCA_Entire_prcomp2, biplot = TRUE)
+```
+
+```{r Plotly 3D plot}
+plot_ly(New_Rate, 
+        x = ~PC1, y = ~PC2, z = ~PC3,
+        size = 10)
+```
+
+```{r ratediff, short rate exclude}
+Rate_2020 <- Rate_diff[(which(Rate_raw[, 1] == "2020-01-02") - 1):
+                       (which(Rate_raw[, 1] == "2020-12-31") - 1), ]
+
+PCA_2020_prcomp <- prcomp(Rate_2020,
+                          center = TRUE)
+
+PCA_2020_prcomp
+```
+
+```{r}
+screeplot(PCA_2020_prcomp, type = 'lines', pch = 19,
+          npcs = 6)
+```
+
+```{r}
+New_Rate_2020 <- t(as.matrix(PCA_2020_prcomp$x[, 1:3]))
+
+Mean_2020 <- rowMeans(New_Rate_2020)
+
+SD_2020 <- (rowMeans(New_Rate_2020 %*% t(New_Rate_2020)) -
+             rowMeans(New_Rate_2020)) ^ (1/2)
+
+SD_2020[1] <- SD_2020[1] * 3.090232 * 1 ^ (1/2)
+SD_2020[2] <- 0
+SD_2020[3] <- 0
+
+
+
+b <- solve(PCA_2020_prcomp$rotation)[1:3,-c(1,2)]
+
+SD_2020%*%b
+
+```
