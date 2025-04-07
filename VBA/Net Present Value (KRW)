@@ -1,0 +1,585 @@
+Option Base 1
+Option Explicit
+'#자료 가져오기
+Sub Open_Resource()
+
+Dim WS1, WS2, WS3, WS4, WS5
+Dim Cal_Date, Eff_Date As Date
+Dim Filename1 As String
+
+Set WS1 = Workbooks("KRW multi NPV.xlsm").Worksheets("Rate")
+Set WS2 = Workbooks("KRW multi NPV.xlsm").Worksheets("Cal")
+Set WS3 = Workbooks("KRW multi NPV.xlsm").Worksheets("Busi_Find")
+Set WS4 = Workbooks("KRW multi NPV.xlsm").Worksheets("Cash Flow")
+Set WS5 = Workbooks("KRW multi NPV.xlsm").Worksheets("Trade Info")
+
+Cal_Date = WS1.Range("E1").Value
+
+'산출일 입력 없음
+    
+'금리 파일 Open
+Workbooks.Open Filename:="C:\Users\Win10\Desktop\NPV\금리 파라미터", ReadOnly:=False
+
+'달력 파일 Open
+Dim Pathname As String, Filename As String
+Pathname = "C:\Users\Win10\Desktop\NPV\Calendar\"
+Filename1 = Workbooks("KRW multi NPV.xlsm").Worksheets("Rate").Range("E2")
+If WS1.Range("E2") > "2016-12-31" Then
+    Workbooks.Open Filename:=Pathname & Filename1, ReadOnly:=False
+Else: Workbooks.Open Filename:="C:\Users\Win10\Desktop\NPV\Calendar\KRXCH1(2016_12)", ReadOnly:=False
+End If
+
+'달력 파일_날짜&서울 붙여넣기 후 MF/Preceding 구하기
+Dim a, Row_N, Row_Cal As Long
+Dim Cal_Arr()
+Row_N = ActiveWorkbook.Worksheets(1).Range("A1").CurrentRegion.Rows.Count - 1
+
+ReDim Cal_Arr(Row_N, 2)
+    For a = 1 To Row_N
+        Cal_Arr(a, 1) = ActiveWorkbook.Worksheets(1).Cells(a + 1, 1)
+        Cal_Arr(a, 2) = ActiveWorkbook.Worksheets(1).Cells(a + 1, 4)
+Next a
+
+WS2.Range("A3618").Resize(Row_N, 2) = Cal_Arr
+
+Row_Cal = WS2.Range("A1").CurrentRegion.Rows.Count - 3616
+ReDim Cal_Arr(Row_Cal, 3)
+    For a = 1 To Row_Cal
+        Cal_Arr(a, 1) = WS2.Cells(a + 3616, 1)
+        Cal_Arr(a, 2) = WS2.Cells(a + 3616, 1)
+        Cal_Arr(a, 3) = WS2.Cells(a + 3616, 2)
+    Next a
+
+
+Dim Date_rng As Range
+Set Date_rng = Range(WS2.Cells(2, 1), WS2.Cells(Row_Cal + 3616, 1))
+    
+For a = 1 To UBound(Cal_Arr, 1)
+    If Cal_Arr(a, 2) <> "g" Then
+      Do Until Date_rng.Find(Cal_Arr(a, 1), , , xlWhole).Offset(0, 1) = "g"
+               Cal_Arr(a, 1) = Cal_Arr(a, 1) + 1
+      Loop
+      Do Until Date_rng.Find(Cal_Arr(a, 2), , , xlWhole).Offset(0, 1) = "g"
+               Cal_Arr(a, 2) = Cal_Arr(a, 2) - 1
+      Loop
+    End If
+
+    If Month(Cal_Arr(a, 1)) <> Month(WS2.Cells(a + 3616, 1)) Then
+      Do
+        Cal_Arr(a, 1) = Cal_Arr(a, 1) - 1
+      Loop Until Date_rng.Find(Cal_Arr(a, 1), , , xlWhole).Offset(0, 1) = "g"
+    End If
+Next a
+
+WS2.Range("C3617").Resize(Row_Cal, 1) = Application.Index(Cal_Arr, 0, 1)
+WS2.Range("D3617").Resize(Row_Cal, 1) = Application.Index(Cal_Arr, 0, 2)
+Erase Cal_Arr
+
+Workbooks(Filename1 & ".xls").Close
+Workbooks("KRW multi NPV.xlsm").Activate
+
+With WS3
+    .Range("C2") = Cal_Date
+    .Range("C3") = Cal_Date + 1       '산출기준일 찾기
+End With
+
+    Do Until Application.WorksheetFunction.VLookup(WS3.Range("C3"), WS2.Range("A1").CurrentRegion, 2) = "g"
+            WS3.Range("C3") = WS3.Range("C3") + 1
+    Loop
+
+    WS3.Range("C4") = WS3.Range("c3") + 1
+    Do Until Application.WorksheetFunction.VLookup(WS3.Range("C4"), WS2.Range("A1").CurrentRegion, 2) = "g"
+             WS3.Range("C4") = WS3.Range("C4") + 1
+    Loop
+
+    If Month(WS3.Range("c3")) <> Month(WS3.Range("c4")) Then        '커브EOM 판단
+       WS3.Range("C5") = "True"   '커브EOM 적용
+    Else
+       WS3.Range("C5") = "False"
+    End If
+    
+Eff_Date = WS3.Range("C3")
+
+
+    Dim j As Integer, Busi_Arr(81, 2) As Date '3N개월 이후 날짜
+      If WS3.Range("C5") = True Then
+        For j = 1 To 81
+                Busi_Arr(j, 1) = Application.WorksheetFunction.EoMonth(Eff_Date, WS3.Cells(j + 7, 2))
+                Busi_Arr(j, 2) = Date_rng.Find(Busi_Arr(j, 1), , , xlWhole).Offset(0, 2).Value
+        Next j
+      Else
+        For j = 1 To 81
+                Busi_Arr(j, 1) = Application.WorksheetFunction.EDate(Eff_Date, WS3.Cells(j + 7, 2))
+                Busi_Arr(j, 2) = Date_rng.Find(Busi_Arr(j, 1), , , xlWhole).Offset(0, 2).Value
+        Next j
+      End If
+
+WS3.Range("c8").Resize(81, 1) = Application.Index(Busi_Arr, 0, 2)
+Erase Busi_Arr
+
+Workbooks("KRW multi NPV.xlsm").Worksheets("Busi_Find").Columns(4).NumberFormat = "#,##0.0000000000"
+ 
+
+End Sub
+Sub Del_Resource()
+Workbooks("KRW multi NPV.xlsm").Worksheets("Rate").Range(Worksheets("Rate").Cells(4, 5), Worksheets("Rate").Cells(4, 22)).ClearContents
+Workbooks("KRW multi NPV.xlsm").Worksheets("Rate").Range("E1").ClearContents
+With Workbooks("KRW multi NPV.xlsm").Worksheets("Cal")
+.Range("A3618:D40000").ClearContents
+End With
+End Sub
+'영업일 찾기 <완료>
+Sub Busi_Find()
+
+Workbooks("KRW multi NPV.xlsm").Activate
+            
+
+            
+Dim WS1, WS2, WS3, WS4, WS5
+
+Set WS1 = Workbooks("KRW multi NPV.xlsm").Worksheets("Rate")
+Set WS2 = Workbooks("KRW multi NPV.xlsm").Worksheets("Cal")
+Set WS3 = Workbooks("KRW multi NPV.xlsm").Worksheets("Busi_Find")
+Set WS4 = Workbooks("KRW multi NPV.xlsm").Worksheets("Cash Flow")
+Set WS5 = Workbooks("KRW multi NPV.xlsm").Worksheets("Trade Info")
+
+
+'3개월 단위 스왑금리 산출
+
+Dim Prime_N As Long, i As Long, j As Integer
+Dim Rate_Raw(18, 2), Rate_3N(81, 7) As Variant
+    For i = 1 To 18
+        Rate_Raw(i, 1) = WS1.Cells(3, i + 4)
+        Rate_Raw(i, 2) = WS1.Cells(4, i + 4)
+    Next i
+    
+    For j = 1 To 81
+        Rate_3N(j, 1) = WS3.Cells(j + 7, 2)
+        Rate_3N(j, 2) = WS3.Cells(j + 7, 3)
+            For i = 1 To 18
+                If Rate_3N(j, 1) = Rate_Raw(i, 1) Then
+                    Rate_3N(j, 3) = Rate_Raw(i, 2)
+            Exit For
+                Else: Rate_3N(j, 3) = ""
+                End If
+            Next i
+    Next j
+    
+WS3.Range("D8").Resize(81, 1) = Application.WorksheetFunction.Index(Rate_3N, 0, 3)
+
+Dim Rate_Ante, Rate_Post As Double
+    For j = 1 To 81
+        If Rate_3N(j, 3) = "" Then
+            Rate_Ante = WS3.Cells(j + 7, 4).End(xlUp).Value
+            Rate_Post = WS3.Cells(j + 7, 4).End(xlDown).Value
+            Rate_3N(j, 4) = Application.Round(Rate_Ante + (Rate_Post - Rate_Ante) * (Rate_3N(j, 2) - WS3.Cells(j + 7, 4).End(xlUp).Offset(0, -1)) / (WS3.Cells(j + 7, 4).End(xlDown).Offset(0, -1) - WS3.Cells(j + 7, 4).End(xlUp).Offset(0, -1)), 14)
+        Else: Rate_3N(j, 4) = Rate_3N(j, 3)
+        End If
+    Next j
+    
+'DF
+    For j = 3 To 81
+    Rate_3N(j, 6) = 0
+    Next j
+    
+    Rate_3N(1, 5) = 1
+    Rate_3N(1, 6) = ""
+    Rate_3N(2, 5) = Application.WorksheetFunction.Round(1 / (1 + Rate_3N(2, 4) * (Rate_3N(2, 2) - Rate_3N(1, 2)) / 365), 12)
+    Rate_3N(2, 6) = Rate_3N(2, 5) * (Rate_3N(2, 2) - Rate_3N(1, 2)) / 365
+    
+    For j = 3 To 81
+        Rate_3N(j, 5) = Application.WorksheetFunction.Round((1 - Rate_3N(j, 4) * (Application.Sum(Application.Index(Rate_3N, 0, 6)))) / (1 + Rate_3N(j, 4) / 365 * (Rate_3N(j, 2) - Rate_3N(j - 1, 2))), 12)
+        Rate_3N(j, 6) = Rate_3N(j, 5) * (Rate_3N(j, 2) - Rate_3N(j - 1, 2)) / 365
+    Next j
+    
+'ZCR
+
+    Rate_3N(1, 7) = Rate_3N(1, 4)
+    For j = 2 To 81
+        Rate_3N(j, 7) = Application.WorksheetFunction.Round(Application.WorksheetFunction.Ln(Rate_3N(j, 5) ^ (-1)) * 365 / (Rate_3N(j, 2) - Rate_3N(1, 2)), 14)
+    Next j
+
+WS3.Range("E8").Resize(81, 1) = Application.Index(Rate_3N, 0, 4)
+WS3.Range("F8").Resize(81, 1) = Application.Index(Rate_3N, 0, 5)
+WS3.Range("G8").Resize(81, 1) = Application.Index(Rate_3N, 0, 6)
+WS3.Range("H8").Resize(81, 1) = Application.Index(Rate_3N, 0, 7)
+    
+Erase Rate_Raw, Rate_3N
+
+
+End Sub
+Sub Del_BusiFind()  '내용 지우기
+Workbooks("KRW multi NPV.xlsm").Worksheets("Busi_Find").Range(Worksheets("Busi_Find").Cells(8, 4), Worksheets("Busi_Find").Cells(88, 8)).ClearContents
+End Sub
+Sub Multi_NPVCal12()
+
+'With Application
+'.ScreenUpdating = False
+'.DisplayStatusBar = False
+'.Calculation = xlCalculationManual
+'.EnableEvents = False
+'.DisplayAlerts = False
+'End With
+
+
+Dim WS1, WS2, WS3, WS4, WS5
+
+Set WS1 = Workbooks("KRW multi NPV.xlsm").Worksheets("Rate")
+Set WS2 = Workbooks("KRW multi NPV.xlsm").Worksheets("Cal")
+Set WS3 = Workbooks("KRW multi NPV.xlsm").Worksheets("Busi_Find")
+Set WS4 = Workbooks("KRW multi NPV.xlsm").Worksheets("Cash Flow")
+Set WS5 = Workbooks("KRW multi NPV.xlsm").Worksheets("Trade Info")
+
+Workbooks("KRW multi NPV.xlsm").Activate
+
+
+Dim Trade_N, Multi_NPV As Double
+    Trade_N = Worksheets("Trade Info").Range("A1").CurrentRegion.Rows.Count - 1
+    
+Dim NPV_Sum
+ReDim NPV_Sum(Trade_N, 1)
+
+Dim Info_Arr(7, 1)
+
+'WS5.Range(Cells(2, "C"), Cells(Rows.Count, "C").End(3)).TextToColumns Destination:=Range("C2"), Tab:=True, _
+        Other:=True, OtherChar:="-", TrailingMinusNumbers:=True
+        
+For Multi_NPV = 1 To Trade_N   '거래정보 입력
+'  If WS5.Cells(Multi_NPV + 1, 4) - WS3.Cells(3, 3) > 0 Then
+
+    Info_Arr(1, 1) = DateValue(Format(WS5.Cells(Multi_NPV + 1, 3), "yyyy-mm-dd"))
+    Info_Arr(2, 1) = (Left(WS5.Cells(Multi_NPV + 1, 4), 4) - Left(WS5.Cells(Multi_NPV + 1, 3), 4)) * 12 + _
+                       Mid(WS5.Cells(Multi_NPV + 1, 4), 6, 2) - Mid(WS5.Cells(Multi_NPV + 1, 3), 6, 2)
+    Info_Arr(4, 1) = WS5.Cells(Multi_NPV + 1, 18)
+    Info_Arr(5, 1) = WS5.Cells(Multi_NPV + 1, 24)
+    Info_Arr(6, 1) = WS5.Cells(Multi_NPV + 1, 22)
+    Info_Arr(7, 1) = WS5.Cells(Multi_NPV + 1, 17)
+    
+'------------------------대상 특정안하는 경우 off-----------------------
+'    If WS5.Cells(Multi_NPV + 1, 6) = WS5.Range("AC2") Then
+'        Info_Arr(3, 1) = WS5.Cells(Multi_NPV + 1, 15)
+'    Else: Info_Arr(3, 1) = -WS5.Cells(Multi_NPV + 1, 15)
+'    End If
+'------------------------------온-----------------------------------
+    Info_Arr(3, 1) = WS5.Cells(Multi_NPV + 1, 15)
+'------------------------------ㅇ------------------------------------
+
+'이자교환일 찍기
+With WS4
+.Columns(2).NumberFormat = "YYYY-MM-DD"
+.Columns(1).NumberFormat = "YYYY-MM-DD"
+End With
+
+
+  Dim CF_Arr  '직전3NM 말고 직후3NM 추가
+  Dim CF_N, Row_Cal As Long
+  Dim Tgt_Date As Date
+  
+  Row_Cal = WS2.Range("A1").CurrentRegion.Rows.Count - 1
+  Dim Date_rng As Range, NMDate_rng As Range
+  'Set Date_rng = WS2.Range(WS2.Cells(2, 1), WS2.Cells(Row_Cal + 1, 1))
+  Set NMDate_rng = WS3.Range(WS3.Cells(8, 3), WS3.Cells(88, 3))
+
+  ReDim CF_Arr(Info_Arr(2, 1) / 3, 7)
+
+  Dim dict As New Scripting.Dictionary
+  Dim rngS, rngF
+  Dim i As Long
+
+
+ If Info_Arr(7, 1) = "PRECEDING" Then
+    rngS = WS2.Range(WS2.Range("A2"), WS2.Cells(Rows.Count, "d").End(3))
+    For i = 1 To UBound(rngS, 1)
+      If dict.Exists(rngS(i, 1)) Then
+      Else
+        dict.Add rngS(i, 1), rngS(i, 4)
+      End If
+    Next i
+
+    ReDim rngF(UBound(CF_Arr, 1), 1)
+    If Info_Arr(5, 1) = "Y" Then
+      For i = 1 To UBound(CF_Arr, 1)
+        rngF(i, 1) = Application.EoMonth(Info_Arr(1, 1), i * 3)
+      Next i
+    Else
+      For i = 1 To UBound(CF_Arr, 1)
+        rngF(i, 1) = Application.EDate(Info_Arr(1, 1), i * 3)
+      Next i
+    End If
+    
+    For i = 1 To UBound(rngF, 1)
+        If dict.Exists(rngF(i, 1)) Then
+            CF_Arr(i, 3) = dict(rngF(i, 1))
+        End If
+    Next i
+    
+ Else: rngS = WS2.Range(WS2.Range("A2"), WS2.Cells(Rows.Count, "c").End(3))
+    For i = 1 To UBound(rngS, 1)
+      If dict.Exists(rngS(i, 1)) Then
+      Else
+        dict.Add rngS(i, 1), rngS(i, 3)
+      End If
+    Next i
+
+    ReDim rngF(UBound(CF_Arr, 1), 1)
+    If Info_Arr(5, 1) = "Y" Then
+      For i = 1 To UBound(CF_Arr, 1)
+        rngF(i, 1) = Application.EoMonth(Info_Arr(1, 1), i * 3)
+      Next i
+    Else
+      For i = 1 To UBound(CF_Arr, 1)
+        rngF(i, 1) = Application.EDate(Info_Arr(1, 1), i * 3)
+      Next i
+    End If
+    
+    For i = 1 To UBound(rngF, 1)
+        If dict.Exists(rngF(i, 1)) Then
+            CF_Arr(i, 3) = dict(rngF(i, 1))
+        End If
+    Next i
+ End If
+    
+Erase rngS
+Erase rngF
+dict.RemoveAll
+
+
+'  If Info_Arr(5, 1) = "Y" Then
+'    For CF_N = 1 To UBound(CF_Arr, 1)
+'        Tgt_Date = Application.EoMonth(Info_Arr(1, 1), CF_N * 3)
+'        CF_Arr(CF_N, 3) = Date_rng.Find(Tgt_Date, , , xlWhole).Offset(0, 2).Value
+'    Next CF_N
+'  Else
+'
+'   For CF_N = 1 To UBound(CF_Arr, 1)
+'        Tgt_Date = Application.WorksheetFunction.EDate(Info_Arr(1, 1), CF_N * 3)
+'        CF_Arr(CF_N, 3) = Date_rng.Find(Tgt_Date, , , xlWhole).Offset(0, 2).Value
+'    Next CF_N
+'  End If
+
+
+'일별 ZCR
+  Dim k, m, n As Integer
+  Dim NM_Arr(81, 1)
+  Dim Date_limit As Date
+  Date_limit = "9999-12-31"
+  
+  
+  For k = 1 To 81
+    NM_Arr(k, 1) = WS3.Cells(k + 7, 3).Value
+  Next k
+  
+ '직전,직후 3NM 찾기
+    For CF_N = 1 To UBound(CF_Arr, 1)
+        If CF_Arr(CF_N, 3) > WS3.Range("C3") Then
+            For k = 1 To 81
+                If NM_Arr(k, 1) - CF_Arr(CF_N, 3) < 0 And NM_Arr(k + 1, 1) - CF_Arr(CF_N, 3) >= 0 Then
+                    For m = CF_N To UBound(CF_Arr, 1)
+                        CF_Arr(m, 1) = NM_Arr(k + m - CF_N, 1)
+                    Next m
+                    For n = CF_N To UBound(CF_Arr, 1) - 1
+                        CF_Arr(n, 2) = CF_Arr(n + 1, 1)
+                    Next n
+                    If UBound(CF_Arr, 1) = 80 And Info_Arr(1, 1) = WS3.Range("C3") Then
+                    CF_Arr(UBound(CF_Arr, 1), 2) = CF_Arr(UBound(CF_Arr, 1), 3)
+                    Else: CF_Arr(UBound(CF_Arr, 1), 2) = NM_Arr(k + UBound(CF_Arr, 1) - CF_N + 1, 1)  '20년짜리 당일 등록시?
+                    End If
+                Exit For
+                End If
+            Next k
+        Exit For
+        End If
+    Next CF_N
+
+  Erase NM_Arr
+
+
+  
+
+        For CF_N = 1 To UBound(CF_Arr, 1)
+            If CF_Arr(CF_N, 3) > WS3.Range("C3") Then
+                If CF_Arr(CF_N, 3) <> CF_Arr(CF_N, 1) Then
+                    CF_Arr(CF_N, 4) = Application.Round(NMDate_rng.Find(CF_Arr(CF_N, 1), , , xlWhole).Offset(0, 5) _
+                                     + (NMDate_rng.Find(CF_Arr(CF_N, 2), , , xlWhole).Offset(0, 5) _
+                                     - NMDate_rng.Find(CF_Arr(CF_N, 1), , , xlWhole).Offset(0, 5)) _
+                                     * (CF_Arr(CF_N, 3) - CF_Arr(CF_N, 1)) / (CF_Arr(CF_N, 2) - CF_Arr(CF_N, 1)), 14)
+
+                Else: CF_Arr(CF_N, 4) = NMDate_rng.Find(CF_Arr(CF_N, 1), , , xlWhole).Offset(0, 5)
+                End If
+            Else: CF_Arr(CF_N, 4) = "-"
+                  CF_Arr(CF_N, 7) = "-"
+            End If
+        Next CF_N
+
+
+        For CF_N = 1 To UBound(CF_Arr, 1)
+            If CF_Arr(CF_N, 4) <> "-" Then
+                 CF_Arr(CF_N, 5) = Application.WorksheetFunction.Round(Exp(-CF_Arr(CF_N, 4) * (CF_Arr(CF_N, 3) - WS3.Range("C3")) / 365), 12)
+                 CF_Arr(CF_N, 6) = Info_Arr(4, 1)
+            Else: CF_Arr(CF_N, 5) = 0
+                  CF_Arr(CF_N, 6) = "-"
+            End If
+        Next CF_N
+        
+
+        
+        WS4.Range("A11").Resize(UBound(CF_Arr, 1), UBound(CF_Arr, 2)) = CF_Arr
+
+        Erase CF_Arr
+
+
+    
+'CD금리
+
+Dim CD_Tom
+Dim MF_rng As Range
+Set MF_rng = WS2.Range(WS2.Cells(2, 3), WS2.Cells(Row_Cal + 1, 3))
+
+    If WS4.Range("G11") = "-" Then
+        CD_Tom = WS4.Range("G10").End(xlDown).Offset(0, -4)
+    Else: CD_Tom = Info_Arr(1, 1)
+    End If
+    
+    WS4.Range("g9") = MF_rng.Find(CD_Tom, , , xlWhole).Offset(-1, 0)
+
+
+Dim Set_rng As Range
+Set Set_rng = Workbooks("금리 파라미터.xlsx").Worksheets("KRW IRS").Range(Workbooks("금리 파라미터.xlsx").Worksheets("KRW IRS").Cells(4, 1), Workbooks("금리 파라미터.xlsx").Worksheets("KRW IRS").Cells(4, 3).End(xlDown))
+    If WS4.Range("G11") = "-" Then
+        WS4.Range("G10").End(4).Offset(1, 0).Value = Application.WorksheetFunction.VLookup(WS4.Range("g9"), Set_rng, 3, False)
+    Else: WS4.Range("G10").Offset(1, 0).Value = Application.WorksheetFunction.VLookup(WS4.Range("g9"), Set_rng, 3, False)
+    End If
+
+'
+'  Worksheets("Cash Flow").Range("G9").NumberFormat = "YYYY-MM-DD"
+'    If Worksheets("Cash Flow").Range("G11") = "-" Then
+'        Worksheets("Cash Flow").Range("G9") = Worksheets("Cash Flow").Range("G10").End(xlDown).Offset(0, -4).Value
+'    Else: Worksheets("Cash Flow").Range("G9") = Worksheets("Cash Flow").Range("C3")
+'    End If
+'
+'    Do
+'    Worksheets("Cash Flow").Range("G9") = Worksheets("Cash Flow").Range("g9") - 1
+'    Loop Until Application.VLookup(Worksheets("Cash Flow").Range("g9"), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g"
+'
+'    If WS4.Range("g11") = "-" Then
+'        WS4.Range("g10").End(xlDown).Offset(1, 0).Value = Application.WorksheetFunction.VLookup(WS4.Range("g9"), Workbooks("금리 파라미터.xlsx").Worksheets("KRW IRS").Range("A3").CurrentRegion, 3)
+'    Else: WS4.Range("g10").Offset(1, 0).Value = Info_Arr(1, 1)
+'    End If
+'
+'
+
+
+
+Dim Last_Arr
+
+ReDim Last_Arr(Info_Arr(2, 1) / 3, 8)
+        For CF_N = 1 To UBound(Last_Arr, 1)
+            Last_Arr(CF_N, 1) = WS4.Cells(CF_N + 10, 3)
+            Last_Arr(CF_N, 2) = WS4.Cells(CF_N + 10, 4)
+            Last_Arr(CF_N, 3) = WS4.Cells(CF_N + 10, 5)
+            Last_Arr(CF_N, 4) = WS4.Cells(CF_N + 10, 6)
+
+            If WS4.Cells(CF_N + 10, 7) <> "" Then
+                Last_Arr(CF_N, 5) = WS4.Cells(CF_N + 10, 7)
+            Else: Last_Arr(CF_N, 5) = Application.WorksheetFunction.Round((Last_Arr(CF_N - 1, 3) / Last_Arr(CF_N, 3) - 1) _
+            * 365 / (Last_Arr(CF_N, 1) - Last_Arr(CF_N - 1, 1)) * 100, 12)
+            End If
+            
+        Next CF_N
+
+
+
+
+'이자금액
+        
+            If Last_Arr(1, 4) = "-" Then
+                Last_Arr(1, 6) = 0
+                Last_Arr(1, 7) = 0
+                Last_Arr(1, 8) = 0
+            Else: Last_Arr(1, 6) = Last_Arr(1, 4) * Info_Arr(3, 1) / 100 * (Last_Arr(1, 1) - Info_Arr(1, 1)) / 365
+            
+                  Last_Arr(1, 7) = Last_Arr(1, 5) * Info_Arr(3, 1) / 100 * (Last_Arr(1, 1) - Info_Arr(1, 1)) / 365
+                  
+                  Last_Arr(1, 8) = Last_Arr(1, 7) - Last_Arr(1, 6)
+            End If
+
+      
+        For CF_N = 2 To UBound(Last_Arr, 1)
+            If Last_Arr(CF_N, 3) <> "0" Then
+                Last_Arr(CF_N, 6) = Last_Arr(CF_N, 4) * Info_Arr(3, 1) / 100 * (Last_Arr(CF_N, 1) - Last_Arr(CF_N - 1, 1)) / 365
+                
+              If Info_Arr(6, 1) = "ACT/ACT.ISDA" Then
+              
+                Select Case Year(Last_Arr(CF_N, 1)) Mod 4
+                    Case Is = 0
+                      If Year(Last_Arr(CF_N, 1)) <> Year(Last_Arr(CF_N - 1, 1)) Then
+                        Last_Arr(CF_N, 7) = Last_Arr(CF_N, 5) * Info_Arr(3, 1) / 100 * _
+                        ((DateSerial(Year(Last_Arr(CF_N, 1)), 1, 1) - Last_Arr(CF_N - 1, 1)) / 365 + (Last_Arr(CF_N, 1) - DateSerial(Year(Last_Arr(CF_N, 1)), 1, 1)) / 366)
+                      Else: Last_Arr(CF_N, 7) = Last_Arr(CF_N, 5) * Info_Arr(3, 1) / 100 * (Last_Arr(CF_N, 1) - Last_Arr(CF_N - 1, 1)) / 366
+                      End If
+                    Case Is = 1
+                      If Year(Last_Arr(CF_N, 1)) <> Year(Last_Arr(CF_N - 1, 1)) Then
+                        Last_Arr(CF_N, 7) = Last_Arr(CF_N, 5) * Info_Arr(3, 1) / 100 * _
+                        ((DateSerial(Year(Last_Arr(CF_N, 1)), 1, 1) - Last_Arr(CF_N - 1, 1)) / 366 + (Last_Arr(CF_N, 1) - DateSerial(Year(Last_Arr(CF_N, 1)), 1, 1)) / 365)
+                      Else: Last_Arr(CF_N, 7) = Last_Arr(CF_N, 5) * Info_Arr(3, 1) / 100 * (Last_Arr(CF_N, 1) - Last_Arr(CF_N - 1, 1)) / 365
+                      End If
+                    Case Else
+                      Last_Arr(CF_N, 7) = Last_Arr(CF_N, 5) * Info_Arr(3, 1) / 100 * (Last_Arr(CF_N, 1) - Last_Arr(CF_N - 1, 1)) / 365
+                 End Select
+              Else: Last_Arr(CF_N, 7) = Last_Arr(CF_N, 5) * Info_Arr(3, 1) / 100 * (Last_Arr(CF_N, 1) - Last_Arr(CF_N - 1, 1)) / 365
+              
+              End If
+                Last_Arr(CF_N, 8) = Last_Arr(CF_N, 7) - Last_Arr(CF_N, 6)
+                
+            Else: Last_Arr(CF_N, 6) = 0
+                  Last_Arr(CF_N, 7) = 0
+                  Last_Arr(CF_N, 8) = 0
+            End If
+        Next CF_N
+
+
+''''''''''''''''''''''이자금액 상세 확인시 ON'''''''''''''''''''''''''''''
+'WS4.Range("G11").Resize(UBound(Last_Arr, 1), 1) = Application.Index(Last_Arr, 0, 5)
+'WS4.Range("H11").Resize(UBound(Last_Arr, 1), 1) = Application.Index(Last_Arr, 0, 6)
+'WS4.Range("I11").Resize(UBound(Last_Arr, 1), 1) = Application.Index(Last_Arr, 0, 7)
+'WS4.Range("J11").Resize(UBound(Last_Arr, 1), 1) = Application.Index(Last_Arr, 0, 8)
+
+
+
+
+Worksheets("Trade Info").Cells(Multi_NPV + 1, 30) = Application.RoundDown(Application.SumProduct(Application.Index(Last_Arr, 0, 3), Application.Index(Last_Arr, 0, 8)), 0)
+
+'-------------------------------------------------------ㅇ--------------------------------------------------------
+'------------------------------------------------개별 전환시 미시행--------------------------------------------------
+Workbooks("KRW multi NPV.xlsm").Worksheets("Cash Flow").Range(Worksheets("Cash Flow").Cells(11, 1), Worksheets("Cash Flow").Cells(90, 10)).ClearContents
+
+'-------------------------------------------------------ㅇ--------------------------------------------------------
+'-------------------------------------------------------ㅇ--------------------------------------------------------
+NPV_Sum(Multi_NPV, 1) = Application.RoundDown(Application.SumProduct(Application.Index(Last_Arr, 0, 3), Application.Index(Last_Arr, 0, 8)), 0)
+Erase Last_Arr
+Erase Info_Arr
+'End If
+Next Multi_NPV
+
+
+'$$$Worksheets("Trade Info").Range("AE2") = Application.WorksheetFunction.Sum(Range(Worksheets("Trade Info").Cells(2, 30), Worksheets("Trade Info").Cells(1 + Trade_N, 30)))
+Worksheets("Trade Info").Range("AE2") = Application.Sum(NPV_Sum)
+
+With Application
+.ScreenUpdating = True
+.DisplayStatusBar = True
+.Calculation = xlCalculationAutomatic
+.EnableEvents = True
+.DisplayAlerts = True
+End With
+
+End Sub
+Sub Del_CashFlow()  'CF 내용 지우기
+Workbooks("KRW multi NPV.xlsm").Worksheets("Cash Flow").Range(Worksheets("Cash Flow").Cells(11, 1), Worksheets("Cash Flow").Cells(90, 10)).ClearContents
+
+End Sub
+Sub NPV_Del()
+Dim KKK As Double
+KKK = Workbooks("KRW multi NPV.xlsm").Worksheets("Trade Info").Range("A1").CurrentRegion.Rows.Count
+Workbooks("KRW multi NPV.xlsm").Worksheets("Trade Info").Range(Worksheets("Trade Info").Cells(2, 30), Worksheets("Trade Info").Cells(KKK + 1, 30)).ClearContents
+End Sub
