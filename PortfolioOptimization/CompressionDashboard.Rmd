@@ -1,0 +1,1848 @@
+---
+title: "22-01차 Compression Report"
+output: 
+  flexdashboard::flex_dashboard:
+    theme: flatly 
+    orientation: rows
+    vertical_layout: fill  #or scroll
+runtime: shiny
+---
+
+```{=html}
+<style type="text/css">
+
+.chart-title {  /* chart_title  */
+   font-size: 20px;
+   font-weight: Bold;
+   font-family: Sans;
+
+</style>
+```
+
+```{r global, include=FALSE}
+
+# 사용법 및 안내-----------------------------------------------
+# -모든 chunk를 실행시킬 필요없이, 상단 메뉴중 'Run Document' 클릭
+# -본 chunk에 차트 생성을 위한 기본 작업을 명시하였으나, 신속한 랜더링을 위해 최초 작업 이후에는 .Rdata 데이터 저장 및 로딩 형식으로 변경함
+# -본 chunk 이후 마크다운형식(# 등)으로 구분된 chunk들의 경우 각각이 하나의 차트를 의미함
+# -아래 패키지의 설치가 필요
+
+library(flexdashboard)
+library(scales)
+library(readxl)
+library(tidyverse)
+library(hablar)
+library(lubridate)
+library(ggnetwork)
+library(network)
+library(sna)
+library(reshape2)
+library(igraph)
+library(tidygraph)
+library(plotly)
+library(RColorBrewer)
+library(visNetwork)
+library(scales)
+library(DT)
+library(shiny)
+library(ggforce)
+
+options(digits = 5)
+options(scipen = 999)
+
+
+# Basic Info & Load Files---------------------------------------------------
+
+## 축약 회차 및 리스크량 산출일 입력(산출일 == 축약실행일 - 1BD)
+Comp_cycle <- "Test_22-01"   #실축약은 Real_YY-NN
+BDate <- as.Date("2022-04-27")
+
+# ## 사전증거금 관련 자료 입력------------------------------------------
+# 
+# ### 분기별 구분을 위한 인자
+# Marginrate_N <- 3     #21.2nd test = 2, 22.1st test = 3, 22.2nd test = 3, 22.1st real = 3
+# 
+# ### 사전증거금률
+# Margin_mat <- c(1:24)  #증거금 기준만기
+# Margin_rate_21.3Q <-
+#     c(
+#         0.01, 
+#         0.05,
+#         0.09,
+#         0.13,
+#         0.22,
+#         0.33,
+#         0.55,
+#         0.78,
+#         1.06,
+#         1.29,
+#         1.54,
+#         1.79,
+#         2.05,
+#         2.28,
+#         2.61,
+#         2.92,
+#         3.02,
+#         3.09,
+#         3.18,
+#         3.35,
+#         3.52,
+#         3.78,
+#         4.02,
+#         4.25
+#     )
+# Margin_rate_22.2Q <-
+#     c(
+#         0.01,
+#         0.06,
+#         0.10,
+#         0.16,
+#         0.28,
+#         0.43,
+#         0.78,
+#         1.11,
+#         1.41,
+#         1.59,
+#         1.82,
+#         2.04,
+#         2.25,
+#         2.39,
+#         2.64,
+#         2.94,
+#         3.02,
+#         3.13,
+#         3.28,
+#         3.54,
+#         3.76,
+#         4.01,
+#         4.22,
+#         4.48
+#     )
+# 
+# Margin_rate <-
+#     rbind(Margin_mat, Margin_rate_21.3Q, Margin_rate_22.2Q)
+
+
+# ### Load Trade Files
+# Tadd <- paste0(Comp_cycle, "/Info_mutate/")       # 회원제출 정보(Information) 주소. "mutate" == Amended File Names
+# Padd <- paste0(Comp_cycle, "/Proposal_mutate/")   # TO생성 결과(Proposal) 주소. "mutate" == Amended File Names
+
+# 
+# ### 참가자 list(TO가 제공한 익명정보) for trade data
+# add_T_093 <- paste(Tadd, "KRX093_Trade.csv", sep="")     ##Member Trade Files Address
+# add_T_142 <- paste(Tadd, "KRX142_Trade.csv", sep="")
+# add_T_182 <- paste(Tadd, "KRX182_Trade.csv", sep="")
+# add_T_224 <- paste(Tadd, "KRX224_Trade.csv", sep="")
+# add_T_234 <- paste(Tadd, "KRX234_Trade.csv", sep="")
+# add_T_465 <- paste(Tadd, "KRX465_Trade.csv", sep="")
+# add_T_560 <- paste(Tadd, "KRX560_Trade.csv", sep="")
+# add_T_574 <- paste(Tadd, "KRX574_Trade.csv", sep="")
+# add_T_589 <- paste(Tadd, "KRX589_Trade.csv", sep="")
+# add_T_628 <- paste(Tadd, "KRX628_Trade.csv", sep="")
+# add_T_640 <- paste(Tadd, "KRX640_Trade.csv", sep="")
+# add_T_869 <- paste(Tadd, "KRX869_Trade.csv", sep="")
+# add_T_902 <- paste(Tadd, "KRX902_Trade.csv", sep="")
+# 
+# 
+# T_093 <- data.frame(read_csv(add_T_093)) ##Live Execution Stage_Trade Files
+# T_142 <- data.frame(read_csv(add_T_142))
+# T_182 <- data.frame(read_csv(add_T_182))
+# T_224 <- data.frame(read_csv(add_T_224))
+# T_234 <- data.frame(read_csv(add_T_234))
+# T_465 <- data.frame(read_csv(add_T_465))
+# T_560 <- data.frame(read_csv(add_T_560))
+# T_574 <- data.frame(read_csv(add_T_574))
+# T_589 <- data.frame(read_csv(add_T_589))
+# T_628 <- data.frame(read_csv(add_T_628))
+# T_640 <- data.frame(read_csv(add_T_640))
+# T_869 <- data.frame(read_csv(add_T_869))
+# T_902 <- data.frame(read_csv(add_T_902))
+# 
+# 
+# T_list <- list(T_093,
+#                T_142,
+#                T_182,
+#                T_224,
+#                T_234,
+#                T_465,
+#                T_560,
+#                T_574,
+#                T_589,
+#                T_628,
+#                T_640,
+#                T_869,
+#                T_902)
+
+
+# for (i in seq_along(T_list)) {
+#     T_list[[i]] <- T_list[[i]] %>%      
+#         mutate(TRADE_DATE = as.Date(TRADE_DATE, format = "%d.%m.%Y"),       ##Class Convert(DATE)
+#                START_DATE = as.Date(START_DATE, format = "%d.%m.%Y"),
+#                END_DATE = as.Date(END_DATE, format = "%d.%m.%Y"),
+#                NEXT_FIXING_DATE = as.Date(NEXT_FIXING_DATE, format = "%d.%m.%Y"),
+#                NEXT_FLOAT_PAY_DATE = as.Date(NEXT_FLOAT_PAY_DATE, format = "%d.%m.%Y"),
+#                NEXT_FIX_PAY_DATE = as.Date(NEXT_FIX_PAY_DATE, format = "%d.%m.%Y"),
+#                MTM_DATE = as.Date(MTM_DATE, format = "%d.%m.%Y"),
+#                Mat_rem = as.numeric(END_DATE - MTM_DATE - 1)) %>%     ##Calculate 잔존만기 - Assumption : D-Day is the next day of MTM_DATE
+#         select(
+#             "TRADE_ID",
+#             'RISK_UNIT',
+#             'MTM_VALUE',
+#             'PARTY_ID',
+#             'CP_ID',
+#             'NOTIONAL',
+#             'PAY_REC',
+#             'COUPON_RATE',
+#             'DAYCOUNT',
+#             'FLOAT_RATE',
+#             'TRADE_DATE',
+#             'START_DATE',
+#             'END_DATE',
+#             'ROLL_DATE',
+#             'NEXT_FIXING_DATE',
+#             'NEXT_FLOAT_PAY_DATE',
+#             'NEXT_FIX_PAY_DATE',
+#             'Mat_rem')
+# }
+# 
+# ### 최종 참가자 정보파일 취합
+# T_con <- data.table::rbindlist(T_list)
+ 
+
+load('T_con.Rdata')
+
+
+
+
+# #1. Compressed Trade(Proposal) Statistic----------------------------------------------
+## 1-1. list of Members-matching between TO/KRX - interactive graph에서 참가자 선택용------------
+## 
+lookup <-
+    structure(
+        c(
+            'KRX224',
+            'KRX589',
+            'KRX560',
+            'KRX093',
+            'KRX142',
+            'KRX640',
+            'KRX234',
+            'KRX902',
+            'KRX182',
+            'KRX869' ,
+            'KRX465',
+            'KRX628',
+            'KRX574'
+        ),
+        .Names = c(
+            '교보증권',
+            '한국투자증권',
+            '신영증권',
+            '메리츠증권',
+            'NH투자증권',
+            'KB증권',
+            '노무라금융투자',
+            '비엔피파리바은행',
+            '우리은행',
+            'SC은행',
+            'SG 은행',
+            '제이피모간체이스은행',
+            '미즈호은행'
+        )
+    )
+
+
+# ## 1-2. 제안서 기본분석------------
+# Proposal <-
+#     data.frame(read_csv(paste0(
+#         Padd, "Consolidated_Unwind_Proposal.csv"  # 통합 Proposal 파일 로딩
+#     )))
+# 
+# Proposal <- Proposal %>%
+#     mutate(
+#         Unwind_NA = ORIGINAL_NOTIONAL - PAY_NOTIONAL,  # Unwind Notional Amount(Full & Partial) 전체/부분축약 합계
+#         Unwind_NA_partial = ifelse(                    # Unwind Notional Amount(Partial) 부분축약 합계
+#             TRADE_COMPRESSION_TYPE == 'Residual',
+#             ORIGINAL_NOTIONAL - PAY_NOTIONAL,
+#             0
+#         ),
+#         Maturity = T_con[match(CCP_TRADE_ID, T_con$TRADE_ID), 18],        #잔존만기 열 추가
+#         Margin_mat = case_when(                                           #증거금률 만기별 잔존만기 구분
+#             Maturity <= 91 ~ 1,
+#             Maturity <= 183 ~ 2,
+#             Maturity <= 274 ~ 3,
+#             Maturity <= 365 ~ 4,
+#             Maturity <= 547 ~ 5,
+#             Maturity <= 730 ~ 6,
+#             Maturity <= 1095 ~ 7,
+#             Maturity <= 1461 ~ 8,
+#             Maturity <= 1826 ~ 9,
+#             Maturity <= 2191 ~ 10,
+#             Maturity <= 2556 ~ 11,
+#             Maturity <= 2922 ~ 12,
+#             Maturity <= 3287 ~ 13,
+#             Maturity <= 3652 ~ 14,
+#             Maturity <= 4017 ~ 15,
+#             Maturity <= 4383 ~ 16,
+#             Maturity <= 4748 ~ 17,
+#             Maturity <= 5113 ~ 18,
+#             Maturity <= 5478 ~ 19,
+#             Maturity <= 5844 ~ 20,
+#             Maturity <= 6209 ~ 21,
+#             Maturity <= 6574 ~ 22,
+#             Maturity <= 6939 ~ 23,
+#             TRUE ~ 24
+#         )
+#     )
+# 
+# 
+# #### Proposal_Original Notional / Notional Remain / Notional Unwind / Notional Unwind_Partial 산출
+# data1_Proposal <- apply(Proposal[, c(21, 23, 61, 62)], 2, sum)     
+# 
+# 
+# 
+# ## 1-3. 사전증거금인 총가치변동증거금(Total Value - 증거금률 방식) 계산-------
+# 
+# Proposal <-
+#   left_join(Proposal,
+#             t(Margin_rate[c(1, Marginrate_N),]),
+#             by = 'Margin_mat',
+#             copy = TRUE)                  # Margin Interval 구분
+# 
+# names(Proposal)[65] <- ("Margin_rate")     
+# 
+# ### Margin per Trades
+# Proposal <- Proposal %>%
+#     mutate(Margin = ifelse(PAY_LEG_TYPE == 'Fixed',
+#                            Unwind_NA * Margin_rate / 100,
+#                            - Unwind_NA * Margin_rate / 100))
+# 
+# ### Margin per 'Member & Margin Interval'
+# TV_Margin <- Proposal %>%
+#     group_by(TRIOPTIMA_PARTY_NAME, Margin_mat) %>% 
+#     summarise(MAR = abs(sum(Margin)))                   
+# 
+# ### Margin per Member
+# TV_Margin_Member <- TV_Margin %>% 
+#     group_by(TRIOPTIMA_PARTY_NAME) %>% 
+#     summarise(MAR_sum = sum(round(MAR, digits = 0)))    
+# 
+# # summarise(TV_Margin_Member, Margin = sum(MAR_sum))   # Entire Margin(Validation)
+
+load('Proposal.Rdata')
+load('data1_Proposal.Rdata')
+
+
+# ## 1-4. 축약 수수료 분석-------------------------------------
+
+# ## 축약 수수료 table(청산수수료, 축약수수료율 등은 실제와 유사한 가상의 수치임)
+# 
+# Compfee <- Proposal[,c(3, 5, 9, 24, 61, 62, 63)]
+# 
+# Compfee <- Compfee %>%    # 가상의 수수료율(청산=손실 / 실제미만, 축약=수익/ 실제초과)
+#   mutate(Fee_poten = Unwind_NA * (0.00017 / 100) * (Maturity / 365))
+# 
+# 
+# 
+# 
+# Compfee$Maturity <- ifelse(Compfee$Maturity >= 180, 60000, 30000)
+# Compfee$Unwind_NA_partial <- ifelse(Compfee$Unwind_NA_partial != 0, 1, 0)
+# 
+# Compfee <- Compfee %>% mutate(Fee_comp = (1 - Unwind_NA_partial) * Maturity)
+# 
+# Compfee_result <-
+#   Compfee %>%
+#   group_by(TRIOPTIMA_PARTY_NAME) %>%
+#   summarise_at(vars(Fee_poten, Fee_comp), sum) %>%
+#   mutate(Fee_poten = -Fee_poten,
+#          Fee_sum = Fee_poten + Fee_comp) %>%
+#   relocate(c(TRIOPTIMA_PARTY_NAME, Fee_comp))
+# 
+# 
+# Compfee_result[14, -1] <- t(apply(Compfee_result[, -1], 2, sum))
+# Compfee_result[14, 1] <- "합계"
+# 
+# Compfee_result <-
+#   Compfee_result %>% mutate(
+#     TRIOPTIMA_PARTY_NAME = case_when(
+#       TRIOPTIMA_PARTY_NAME == 'KRX224' ~ '교보',
+#       TRIOPTIMA_PARTY_NAME == 'KRX589' ~ '한투',
+#       TRIOPTIMA_PARTY_NAME == 'KRX560' ~ '신영',
+#       TRIOPTIMA_PARTY_NAME == 'KRX093' ~ '메리츠',
+#       TRIOPTIMA_PARTY_NAME == 'KRX142' ~ 'NH',
+#       TRIOPTIMA_PARTY_NAME == 'KRX640' ~ 'KB',
+#       TRIOPTIMA_PARTY_NAME == 'KRX234' ~ '노무라',
+#       TRIOPTIMA_PARTY_NAME == 'KRX902' ~ 'BNP',
+#       TRIOPTIMA_PARTY_NAME == 'KRX182' ~ '우리',
+#       TRIOPTIMA_PARTY_NAME == 'KRX869' ~ 'SC',
+#       TRIOPTIMA_PARTY_NAME == 'KRX628' ~ 'JPM',
+#       TRIOPTIMA_PARTY_NAME == 'KRX465' ~ 'SG',
+#       TRIOPTIMA_PARTY_NAME == 'KRX574' ~ '미즈호',
+#       TRUE ~ '합계'
+#     )
+#   ) %>%
+#   rename('축약수수료수익' = Fee_comp,
+#          '청산수수료손실' = Fee_poten,
+#          '수수료손익_합계' = Fee_sum) %>%
+#   melt(id.vars = c('TRIOPTIMA_PARTY_NAME'))
+# 
+load('Compfee_result.Rdata')
+# 
+# 
+# ### table
+# 
+# Compfee_table <-
+#   Compfee %>%
+#   group_by(TRIOPTIMA_PARTY_NAME) %>%
+#   summarise_at(vars(Fee_poten, Fee_comp), sum) %>%
+#   mutate(Fee_comp = round(Fee_comp / 10 ^ 6),
+#          Fee_poten = round(-Fee_poten / 10 ^ 6),
+#          Fee_sum = Fee_poten + Fee_comp)
+# 
+# 
+# Compfee_table[14, -1] <- t(apply(Compfee_table[, -1], 2, sum))
+# Compfee_table[14, 1] <- "[CCP합계]"
+# 
+# 
+# Compfee_table <- Compfee_table %>%
+#   arrange(Fee_sum) %>%
+#   mutate(
+#     Sum_index = ifelse(TRIOPTIMA_PARTY_NAME == "[CCP합계]", 1, 0),
+#     TRIOPTIMA_PARTY_NAME = case_when(
+#       TRIOPTIMA_PARTY_NAME == 'KRX224' ~ '교보',
+#       TRIOPTIMA_PARTY_NAME == 'KRX589' ~ '한투',
+#       TRIOPTIMA_PARTY_NAME == 'KRX560' ~ '신영',
+#       TRIOPTIMA_PARTY_NAME == 'KRX093' ~ '메리츠',
+#       TRIOPTIMA_PARTY_NAME == 'KRX142' ~ 'NH',
+#       TRIOPTIMA_PARTY_NAME == 'KRX640' ~ 'KB',
+#       TRIOPTIMA_PARTY_NAME == 'KRX234' ~ '노무라',
+#       TRIOPTIMA_PARTY_NAME == 'KRX902' ~ 'BNP',
+#       TRIOPTIMA_PARTY_NAME == 'KRX182' ~ '우리',
+#       TRIOPTIMA_PARTY_NAME == 'KRX869' ~ 'SC',
+#       TRIOPTIMA_PARTY_NAME == 'KRX628' ~ 'JPM',
+#       TRIOPTIMA_PARTY_NAME == 'KRX465' ~ 'SG',
+#       TRIOPTIMA_PARTY_NAME == 'KRX574' ~ '미즈호',
+#       TRUE ~ "[CCP 합계]"
+#     ))
+
+
+load('Compfee_table.Rdata')
+
+
+# #2. RISK Analysis---------------------------
+# ## 2-1. 민감도(PV01) 및 명목대금 변화------------------
+# 
+# ### CCP 전체 거래에 대한 PV01자료 불러오기
+# load("Riskdata/Pos_KRW_FN_PV01_pre.Rdata")  
+# 
+# Pos_KRW_FN_PV01_pre <- Pos_KRW_FN_PV01
+# 
+# Pos_KRW_FN_PV01_pre_participant <- Pos_KRW_FN_PV01_pre %>%
+#   filter(
+#     Rec_CP %in% c(
+#       '교보증권',
+#       '한국투자증권',
+#       '신영증권',
+#       '메리츠증권',
+#       'NH투자증권',
+#       'KB증권',
+#       '노무라금융투자',
+#       '비엔피파리바은행',
+#       '우리은행',
+#       'SC은행',
+#       'SG 은행',
+#       '제이피모간체이스은행',
+#       '미즈호은행'
+#     ) &
+#       Pay_CP %in% c(
+#         '교보증권',
+#         '한국투자증권',
+#         '신영증권',
+#         '메리츠증권',
+#         'NH투자증권',
+#         'KB증권',
+#         '노무라금융투자',
+#         '비엔피파리바은행',
+#         '우리은행',
+#         'SC은행',
+#         'SG 은행',
+#         '제이피모간체이스은행',
+#         '미즈호은행'
+#       )
+#   )
+
+load('Pos_KRW_FN_PV01_pre.Rdata')
+load('Pos_KRW_FN_PV01_pre_participant.Rdata')
+
+# ## 2-2. 회원별 축약된 명목대금(지급수취 구분)---------
+# 
+# Compressedfixed <- Proposal %>%                       # Unwind FIXED Amount(per Member)
+#     filter(PAY_LEG_TYPE == 'Fixed') %>% 
+#     group_by(TRIOPTIMA_PARTY_NAME) %>% 
+#     summarise(sum_fixed = sum(Unwind_NA) / 10 ^ 8)
+# 
+# Compressedfloat <- Proposal %>%                       # Unwind FLOAT Amount(per Member)
+#     filter(PAY_LEG_TYPE == 'Floating') %>% 
+#     group_by(TRIOPTIMA_PARTY_NAME) %>% 
+#     summarise(sum_float = sum(Unwind_NA) / 10 ^ 8)
+# 
+# CompressedNA <- full_join(Compressedfixed, Compressedfloat, by = c('TRIOPTIMA_PARTY_NAME' = 'TRIOPTIMA_PARTY_NAME')) 
+# 
+# CompressedNA <- CompressedNA %>%
+#   mutate(
+#     TRIOPTIMA_PARTY_NAME = case_when(
+#       TRIOPTIMA_PARTY_NAME == 'KRX224' ~ '교보증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX589' ~ '한국투자증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX560' ~ '신영증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX093' ~ '메리츠증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX142' ~ 'NH투자증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX640' ~ 'KB증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX234' ~ '노무라금융투자',
+#       TRIOPTIMA_PARTY_NAME == 'KRX902' ~ '비엔피파리바은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX182' ~ '우리은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX869' ~ 'SC은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX628' ~ '제이피모간체이스은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX465' ~ 'SG 은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX574' ~ '미즈호은행'
+#       ),
+#     SUM_NA = sum_fixed + sum_float,
+#     SUM_Proportion = SUM_NA / (data1_Proposal[3] / 10 ^ 8) * 100
+#   )
+# 
+# for (i in 1:nrow(CompressedNA)) {
+#   TRIOPTIMA_PARTY_name <- CompressedNA[[1]][[i]]
+#   POS_PARTY <-  Pos_KRW_FN_PV01_pre_participant %>%
+#     filter((
+#       Rec_CP == TRIOPTIMA_PARTY_name | Pay_CP == TRIOPTIMA_PARTY_name
+#     ))
+#   CompressedNA[i, 6] <- sum(POS_PARTY$Notional) / 10 ^ 8
+# }
+# 
+# CompressedNA <- CompressedNA %>%
+#   rename(PossibleTrade = ...6) %>% 
+#   mutate(CompressionRate = SUM_NA / PossibleTrade * 100)
+
+
+load('CompressedNA.Rdata')
+
+
+# ## 2-3. PV01 분석--------------------------------------
+
+
+# ### Partial PV01, Correct PV01 Direction
+# 
+# Proposal_PV01 <-
+#   left_join(Proposal,
+#             Pos_KRW_FN_PV01_pre_participant[, c(4, 33:51)],
+#             by = c("CCP_TRADE_ID" = "CLnum")) %>%
+#   mutate(Unwind_rate = Unwind_NA / ORIGINAL_NOTIONAL)     #부분축약 고려 명목금액 잔존율
+# 
+# Proposal_PV01[, c(67:85)] <-
+#     Proposal_PV01[, c(67:85)] * 
+#     Proposal_PV01$Unwind_rate *
+#     ifelse(Proposal_PV01$PAY_LEG_TYPE == 'Fixed', 1, -1)  #부분축약율 PV01에 반영, 지급수취 조정
+
+
+
+### Caculate Compressed PV01
+# 
+# # #### Validation == 0
+# # sum(Proposal_PV01$Up_Prl)  
+# 
+# Compressed_PV01 <-
+#   Proposal_PV01 %>%                       #Unwind FIXED PV01(per Member)
+#   group_by(TRIOPTIMA_PARTY_NAME) %>%
+#   summarise(
+#     PV_Call = sum(Up_Call),
+#     PV_CD = sum(Up_CD),
+#     PV_6M = sum(Up_6M),
+#     PV_9M = sum(Up_9M),
+#     PV_1Y = sum(Up_1Y),
+#     PV_18M = sum(Up_18M),
+#     PV_2Y = sum(Up_2Y),
+#     PV_3Y = sum(Up_3Y),
+#     PV_4Y = sum(Up_4Y),
+#     PV_5Y = sum(Up_5Y),
+#     PV_6Y = sum(Up_6Y),
+#     PV_7Y = sum(Up_7Y),
+#     PV_8Y = sum(Up_8Y),
+#     PV_9Y = sum(Up_9Y),
+#     PV_10Y = sum(Up_10Y),
+#     PV_12Y = sum(Up_12Y),
+#     PV_15Y = sum(Up_15Y),
+#     PV_20Y = sum(Up_20Y),
+#     PVBP = sum(Up_Prl)
+#   )
+# 
+# 
+# Compressed_PV01 <- Compressed_PV01 %>%
+#   mutate(
+#     TRIOPTIMA_PARTY_NAME = case_when(
+#       TRIOPTIMA_PARTY_NAME == 'KRX224' ~ '교보증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX589' ~ '한국투자증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX560' ~ '신영증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX093' ~ '메리츠증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX142' ~ 'NH투자증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX640' ~ 'KB증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX234' ~ '노무라금융투자',
+#       TRIOPTIMA_PARTY_NAME == 'KRX902' ~ '비엔피파리바은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX182' ~ '우리은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX869' ~ 'SC은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX628' ~ '제이피모간체이스은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX465' ~ 'SG 은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX574' ~ '미즈호은행'
+#     )
+#   )
+
+# ####Validation_All FALSE
+# (apply(Compressed_PV01[, -1], 2, sum) > 10 | apply(Compressed_PV01[, -1], 2, sum) < -10)   
+    
+ 
+# PV01_SUM_FIX <- Pos_KRW_FN_PV01_pre_participant %>%
+#     group_by(Pay_CP) %>%
+#     summarise(PV_Call = sum(Up_Call),
+#               PV_CD = sum(Up_CD),
+#               PV_6M = sum(Up_6M),
+#               PV_9M = sum(Up_9M),
+#               PV_1Y = sum(Up_1Y),
+#               PV_18M = sum(Up_18M),
+#               PV_2Y = sum(Up_2Y),
+#               PV_3Y = sum(Up_3Y),
+#               PV_4Y = sum(Up_4Y),
+#               PV_5Y = sum(Up_5Y),
+#               PV_6Y = sum(Up_6Y),
+#               PV_7Y = sum(Up_7Y),
+#               PV_8Y = sum(Up_8Y),
+#               PV_9Y = sum(Up_9Y),
+#               PV_10Y = sum(Up_10Y),
+#               PV_12Y = sum(Up_12Y),
+#               PV_15Y = sum(Up_15Y),
+#               PV_20Y = sum(Up_20Y),
+#               PVBP = sum(Up_Prl))
+# 
+# 
+# PV01_SUM_FLO <- Pos_KRW_FN_PV01_pre_participant %>%
+#     group_by(Rec_CP) %>%
+#     summarise(PV_Call = sum(Up_Call),
+#               PV_CD = sum(Up_CD),
+#               PV_6M = sum(Up_6M),
+#               PV_9M = sum(Up_9M),
+#               PV_1Y = sum(Up_1Y),
+#               PV_18M = sum(Up_18M),
+#               PV_2Y = sum(Up_2Y),
+#               PV_3Y = sum(Up_3Y),
+#               PV_4Y = sum(Up_4Y),
+#               PV_5Y = sum(Up_5Y),
+#               PV_6Y = sum(Up_6Y),
+#               PV_7Y = sum(Up_7Y),
+#               PV_8Y = sum(Up_8Y),
+#               PV_9Y = sum(Up_9Y),
+#               PV_10Y = sum(Up_10Y),
+#               PV_12Y = sum(Up_12Y),
+#               PV_15Y = sum(Up_15Y),
+#               PV_20Y = sum(Up_20Y),
+#               PVBP = sum(Up_Prl))
+# 
+# 
+# PV01_Member <- full_join(PV01_SUM_FIX, PV01_SUM_FLO, by = c('Pay_CP' = 'Rec_CP'))
+# 
+# PV01_Member[is.na(PV01_Member)] <- 0
+# 
+# PV01_Member <- PV01_Member %>%
+#     mutate(PV_Call = PV_Call.x - PV_Call.y,
+#            PV_CD = PV_CD.x - PV_CD.y,
+#            PV_6M = PV_6M.x - PV_6M.y,
+#            PV_9M = PV_9M.x - PV_9M.y,
+#            PV_1Y = PV_1Y.x - PV_1Y.y,
+#            PV_18M = PV_18M.x - PV_18M.y,
+#            PV_2Y = PV_2Y.x - PV_2Y.y,
+#            PV_3Y = PV_3Y.x - PV_3Y.y,
+#            PV_4Y = PV_4Y.x - PV_4Y.y,
+#            PV_5Y = PV_5Y.x - PV_5Y.y,
+#            PV_6Y = PV_6Y.x - PV_6Y.y,
+#            PV_7Y = PV_7Y.x - PV_7Y.y,
+#            PV_8Y = PV_8Y.x - PV_8Y.y,
+#            PV_9Y = PV_9Y.x - PV_9Y.y,
+#            PV_10Y = PV_10Y.x - PV_10Y.y,
+#            PV_12Y = PV_12Y.x - PV_12Y.y,
+#            PV_15Y = PV_15Y.x - PV_15Y.y,
+#            PV_20Y = PV_20Y.x - PV_20Y.y,
+#            PVBP = PVBP.x - PVBP.y)
+# 
+# PV01_Member_COMP <- PV01_Member[, c(1, 40:58)] %>%
+#     mutate(Var = 'Original_PV01') %>%
+#     rename('TRIOPTIMA_PARTY_NAME' = 'Pay_CP')
+# 
+# Compressed_PV01[, -1] <- -1 * Compressed_PV01[, -1]
+# Compressed_PV01 <- Compressed_PV01 %>%      ##Warning : sign(now: PV01 change, not compressed PV01)
+#     mutate(Var = 'Proposal_PV01')
+# 
+# Comp_PV01_temp <- rbind(PV01_Member_COMP, Compressed_PV01)
+# 
+# PVBP_member <- melt(Comp_PV01_temp[, c(1, 20, 21)])
+
+load('Comp_PV01_temp.Rdata')
+
+##### 회원별 bucket delta graph 위한 list
+lookup_Bucket <-
+    structure(
+        c(
+      '교보증권',
+      '한국투자증권',
+      '신영증권',
+      '메리츠증권',
+      'NH투자증권',
+      'KB증권',
+      '노무라금융투자',
+      '비엔피파리바은행',
+      '우리은행',
+      'SC은행',
+      'SG 은행',
+      '제이피모간체이스은행',
+      '미즈호은행'
+    ),
+        .Names = c(
+      '교보증권',
+      '한국투자증권',
+      '신영증권',
+      '메리츠증권',
+      'NH투자증권',
+      'KB증권',
+      '노무라금융투자',
+      '비엔피파리바은행',
+      '우리은행',
+      'SC은행',
+      'SG 은행',
+      '제이피모간체이스은행',
+      '미즈호은행'
+    )) 
+
+
+
+# ### Parallel PVBP graph
+# 
+# Compressed_PV01_PVBP_member <- melt(Compressed_PV01[, c(1, 20)])
+# 
+# Compressed_PV01_PVBP_member <-
+#     Compressed_PV01_PVBP_member %>%  # 그래프 가독성 위해 축약형 변경
+#     mutate(
+#         TRIOPTIMA_PARTY_NAME = case_when(
+#             TRIOPTIMA_PARTY_NAME == '교보증권' ~ '교보',
+#             TRIOPTIMA_PARTY_NAME == '한국투자증권' ~ '한투',
+#             TRIOPTIMA_PARTY_NAME == '신영증권' ~ '신영',
+#             TRIOPTIMA_PARTY_NAME == '메리츠증권' ~ '메리츠',
+#             TRIOPTIMA_PARTY_NAME == 'NH투자증권' ~ 'NH',
+#             TRIOPTIMA_PARTY_NAME == 'KB증권' ~ 'KB',
+#             TRIOPTIMA_PARTY_NAME == '노무라금융투자' ~ '노무라',
+#             TRIOPTIMA_PARTY_NAME == '비엔피파리바은행' ~ 'BNP',
+#             TRIOPTIMA_PARTY_NAME == '우리은행' ~ '우리',
+#             TRIOPTIMA_PARTY_NAME == 'SC은행' ~ 'SC',
+#             TRIOPTIMA_PARTY_NAME == '제이피모간체이스은행' ~ 'JPM',
+#             TRIOPTIMA_PARTY_NAME == 'SG 은행' ~ 'SG',
+#             TRIOPTIMA_PARTY_NAME == '미즈호은행' ~ '미즈호'
+#         )
+#     )
+
+load('Compressed_PV01_PVBP_member.Rdata')
+
+
+# ### Parallel PVBP Table
+
+# Compressed_PV01_Table <-
+#     dcast(PVBP_member, TRIOPTIMA_PARTY_NAME ~ Var) %>%
+#     mutate(Original_PV01 = Original_PV01 / 10 ^ 6,
+#            Proposal_PV01 = Proposal_PV01 / 10 ^ 6) %>%
+#     arrange() %>%
+#     mutate(
+#         Tolerance = c(5, 30, 2, 1, 2, 6, 5, 5, 5, 10, 100, 10, 3),
+#         Comp_PV01_member = c(-1.5, 0.1, 0, -1, -1.6, -2.2, 3.1, -3.1, -2.1,
+#                              2, -0.6, 0.9, 0),
+#         PV01_chgrate = (Proposal_PV01 / Original_PV01) * 100
+#     ) %>%
+#     relocate(
+#         c(
+#             TRIOPTIMA_PARTY_NAME,
+#             Original_PV01,
+#             Tolerance,
+#             Comp_PV01_member,
+#             Proposal_PV01,
+#             PV01_chgrate
+#         )
+#     )
+
+load('Compressed_PV01_Table.Rdata')
+
+# ## 2-4. 위험측정 - VaR-----------------------------------
+# 
+# load('Riskdata/IM_pre.Rdata') 
+# IM_pre <- IM
+# 
+# load('Riskdata/IM_aft.Rdata')
+# IM_aft <- IM
+# 
+# IM_diff <- left_join(IM_pre, IM_aft[,c(1, 3)], by = c('Accnum' = 'Accnum'))
+# rm(IM_pre, IM_aft)
+# 
+# IM_diff_table <- IM_diff %>% 
+#     mutate(IM.x = - IM.x / 10 ^ 8,
+#            IM.y = - IM.y / 10 ^ 8,
+#            IM.diff = IM.y - IM.x,
+#            IM.diffrate = (IM.diff / IM.x) * 100,
+#            IM.comp_participant = (IM.x == IM.y))
+
+load('IM_diff_table.Rdata')
+
+
+# ### VaR 변화율 그래프
+# 
+# IM_comp <- IM_diff[which(IM_diff[,3] != IM_diff[,4]), -1] %>% 
+#     mutate(IM.x = - IM.x / 10 ^ 8,
+#            IM.y = - IM.y / 10 ^ 8) %>% 
+#     rename('VaR(전)' = IM.x,
+#            'VaR(후)' = IM.y) %>% 
+#     melt()
+# 
+# 
+# IM_comp <- IM_comp %>%      # 그래프 가독성 위해 축약형 변경
+#     mutate(
+#         Member = case_when(
+#             Member == '교보증권' ~ '교보',
+#             Member == '한국투자증권' ~ '한투',
+#             Member == '신영증권' ~ '신영',
+#             Member == '메리츠증권' ~ '메리츠',
+#             Member == 'NH투자증권' ~ 'NH',
+#             Member == 'KB증권' ~ 'KB',
+#             Member == '노무라금융투자' ~ '노무라',
+#             Member == '비엔피파리바은행' ~ 'BNP',
+#             Member == '우리은행' ~ '우리',
+#             Member == 'SC은행' ~ 'SC',
+#             Member == '제이피모간체이스은행' ~ 'JPM',
+#             Member == 'SG 은행' ~ 'SG',
+#             Member == '미즈호은행' ~ '미즈호'
+#         )
+#     )
+
+load('IM_comp.Rdata')
+
+
+### 증거금 커버율
+
+# IM_coverrate <- ungroup(IM_diff) %>% 
+#     mutate(IM.x = - IM.x / 10 ^ 8,
+#            IM.y = - IM.y / 10 ^ 8,
+#            IM.diff = IM.y - IM.x,
+#            IM.comp_participant = (IM.x != IM.y))
+# 
+# IM_coverrate <- IM_coverrate %>% 
+#   filter(IM.comp_participant == TRUE) %>% 
+#   select(Member, IM.diff)
+# 
+# 
+# IM_TV <- TV_Margin_Member %>%
+#   mutate(
+#     TRIOPTIMA_PARTY_NAME = case_when(
+#       TRIOPTIMA_PARTY_NAME == 'KRX224' ~ '교보증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX589' ~ '한국투자증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX560' ~ '신영증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX093' ~ '메리츠증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX142' ~ 'NH투자증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX640' ~ 'KB증권',
+#       TRIOPTIMA_PARTY_NAME == 'KRX234' ~ '노무라금융투자',
+#       TRIOPTIMA_PARTY_NAME == 'KRX902' ~ '비엔피파리바은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX182' ~ '우리은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX869' ~ 'SC은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX628' ~ '제이피모간체이스은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX465' ~ 'SG 은행',
+#       TRIOPTIMA_PARTY_NAME == 'KRX574' ~ '미즈호은행'
+#     ),
+#     MAR_sum = MAR_sum / 10 ^ 8
+#   )
+# 
+# IM_coverrate <- left_join(IM_coverrate, IM_TV, by = c('Member' = 'TRIOPTIMA_PARTY_NAME'))
+# 
+# #### ** 그래프 의미강화를 위해서 수치 조정(가상의 증거금 부족 상황 시현 등) ** 
+# 
+# IM_coverrate$MAR_sum <- c(23, 83, 27, 7, 138, 10.1, 9.7, 114, 86, 147, 333, 7, 11)
+# 
+# 
+# IM_coverrate_table <- IM_coverrate %>%      # 그래프 가독성 위해 축약형 변경
+#     mutate(
+#         Member = case_when(
+#             Member == '교보증권' ~ '교보',
+#             Member == '한국투자증권' ~ '한투',
+#             Member == '신영증권' ~ '신영',
+#             Member == '메리츠증권' ~ '메리츠',
+#             Member == 'NH투자증권' ~ 'NH',
+#             Member == 'KB증권' ~ 'KB',
+#             Member == '노무라금융투자' ~ '노무라',
+#             Member == '비엔피파리바은행' ~ 'BNP',
+#             Member == '우리은행' ~ '우리',
+#             Member == 'SC은행' ~ 'SC',
+#             Member == '제이피모간체이스은행' ~ 'JPM',
+#             Member == 'SG 은행' ~ 'SG',
+#             Member == '미즈호은행' ~ '미즈호'
+#         ),
+#         Coverrate = (MAR_sum / IM.diff) * 100,
+#         CoverNA = (Coverrate > 0),
+#         CoverDanger = (100 < Coverrate),
+#         CoverFinal = CoverNA + CoverDanger
+#     ) %>%
+#     select(Member, IM.diff, MAR_sum, Coverrate, CoverFinal)
+# 
+# 
+# IM_coverrate_table$Coverrate <-               # 사전증거금의 위험커버율 테이블
+#     ifelse(IM_coverrate_table$Coverrate < 0 ,
+#            NA,
+#            IM_coverrate_table$Coverrate)
+# 
+# IM_coverrate_graph <- IM_coverrate_table %>%  # 사전증거금의 위험커버율 그래프
+#     select(Member, Coverrate) %>%
+#     filter(Coverrate > 0)
+
+load('IM_coverrate_table.Rdata')
+load('IM_coverrate_graph.Rdata')
+
+# ## 2-5. 위험측정 - Stress-test-----------------------------------
+
+# ## EVT 시나리오 분석
+# load('EVT_result_group_pre.Rdata') 
+# EVT_pre <- EVT_result_group
+# 
+# load('EVT_result_group_aft.Rdata')
+# EVT_aft <- EVT_result_group
+# 
+# EVT_diff_table <- EVT_diff %>%
+#     filter(EVT_aft != EVT_pre) %>% 
+#     mutate(EVT_pre = EVT_pre / 10 ^ 8,
+#            EVT_aft = EVT_aft / 10 ^ 8,
+#            EVT.diff = EVT_aft - EVT_pre,
+#            EVT.diffrate = (EVT.diff / EVT_pre) * 100) 
+# 
+# EVT_diff_table <- EVT_diff_table %>%      # 그래프 가독성 위해 축약형 변경
+#     mutate(
+#         Member = case_when(
+#             Member == '교보증권' ~ '교보',
+#             Member == '한국투자증권' ~ '한투',
+#             Member == '신영증권' ~ '신영',
+#             Member == '메리츠증권' ~ '메리츠',
+#             Member == 'NH투자증권' ~ 'NH',
+#             Member == 'KB증권' ~ 'KB',
+#             Member == '노무라금융투자' ~ '노무라',
+#             Member == '비엔피파리바은행' ~ 'BNP',
+#             Member == '우리은행' ~ '우리',
+#             Member == 'SC은행' ~ 'SC',
+#             Member == '제이피모간체이스은행' ~ 'JPM',
+#             Member == 'SG 은행' ~ 'SG',
+#             Member == '미즈호은행' ~ '미즈호'
+#         )
+#     )
+
+load('EVT_diff_table.Rdata')
+
+# ### 그래프 생성
+# EVT_comp <- EVT_diff_table %>% 
+#     rename('위험액(전)' = EVT_pre,
+#            '위험액(후)' = EVT_aft)
+# 
+# EVT_comp <- melt(EVT_comp[, c(1:3)])
+
+load('EVT_comp.Rdata')
+
+# #3. Visualization(etc.)--------------------------------------------------------
+
+### 3-1. Proposal Network Graph / Adjacency Matrix
+
+#### for 네트워크 그래프, 참가자명 축약형으로 전환
+# Proposal_Network <- Proposal %>%                       #기본 명목대금 기준
+#     mutate(
+#         TRIOPTIMA_PARTY_NAME = case_when(
+#             TRIOPTIMA_PARTY_NAME == 'KRX224' ~ '교보',
+#             TRIOPTIMA_PARTY_NAME == 'KRX589' ~ '한투',
+#             TRIOPTIMA_PARTY_NAME == 'KRX560' ~ '신영',
+#             TRIOPTIMA_PARTY_NAME == 'KRX093' ~ '메리츠',
+#             TRIOPTIMA_PARTY_NAME == 'KRX142' ~ 'NH투자',
+#             TRIOPTIMA_PARTY_NAME == 'KRX640' ~ 'KB증권',
+#             TRIOPTIMA_PARTY_NAME == 'KRX234' ~ '노무라',
+#             TRIOPTIMA_PARTY_NAME == 'KRX902' ~ 'BNP',
+#             TRIOPTIMA_PARTY_NAME == 'KRX182' ~ '우리은행',
+#             TRIOPTIMA_PARTY_NAME == 'KRX869' ~ 'SC',
+#             TRIOPTIMA_PARTY_NAME == 'KRX628' ~ 'JPM',
+#             TRIOPTIMA_PARTY_NAME == 'KRX465' ~ 'SG',
+#             TRIOPTIMA_PARTY_NAME == 'KRX574' ~ '미즈호'
+#         ),
+#         TRIOPTIMA_CP_NAME = case_when(
+#             TRIOPTIMA_CP_NAME == 'KRX224' ~ '교보',
+#             TRIOPTIMA_CP_NAME == 'KRX589' ~ '한투',
+#             TRIOPTIMA_CP_NAME == 'KRX560' ~ '신영',
+#             TRIOPTIMA_CP_NAME == 'KRX093' ~ '메리츠',
+#             TRIOPTIMA_CP_NAME == 'KRX142' ~ 'NH투자',
+#             TRIOPTIMA_CP_NAME == 'KRX640' ~ 'KB증권',
+#             TRIOPTIMA_CP_NAME == 'KRX234' ~ '노무라',
+#             TRIOPTIMA_CP_NAME == 'KRX902' ~ 'BNP',
+#             TRIOPTIMA_CP_NAME == 'KRX182' ~ '우리은행',
+#             TRIOPTIMA_CP_NAME == 'KRX869' ~ 'SC',
+#             TRIOPTIMA_CP_NAME == 'KRX628' ~ 'JPM',
+#             TRIOPTIMA_CP_NAME == 'KRX465' ~ 'SG',
+#             TRIOPTIMA_CP_NAME == 'KRX574' ~ '미즈호'
+#         )
+#     )
+# 
+# Proposal_Network <-    
+#     left_join(
+#         Proposal_Network,
+#         Pos_KRW_FN_PV01_pre %>% select(CLnum, NPV),     #NPV기준 추가
+#         by = c("TRADE_ID" = "CLnum")
+#     )
+# 
+# Proposal_Network <-
+#     left_join(
+#         Proposal_Network,
+#         Pos_KRW_FN_PV01_pre %>% select(CLnum, Up_Prl),  #PV01기준 추가
+#         by = c("TRADE_ID" = "CLnum")
+#     )
+
+
+load('Proposal_Network.Rdata')
+
+### list of Network graph - 반응형 그래프 및 테이블 생성기준 
+lookup_NET <-
+    structure(c('Unwind_NA', 'NPV', 'Up_Prl'),
+              .Names = c('명목대금', 'NPV', 'PV01'))  # 명목대금 기준 / NPV 기준 / PV01 기준
+
+
+
+
+# ## 3-2. 명세분석(boxplot 3개)
+# 
+# Spec1 <- Pos_KRW_FN_PV01_pre_participant %>%
+#     select(CLnum, Maturity, Notional, NPV, Up_Prl) %>%
+#     mutate(Mat_rem = as.numeric(Maturity - BDate + 1))
+# 
+# Spec2 <- Proposal_PV01 %>%
+#     filter(PAY_LEG_TYPE == 'Fixed') %>%
+#     select(TRADE_ID, Unwind_rate)
+# 
+# Spec1 <- left_join(Spec1, Spec2, by = c('CLnum' = 'TRADE_ID')) %>%
+#     mutate(
+#         Compressed = ifelse(is.na(Unwind_rate) == TRUE, 'Not compressed', 'Compressed'),
+#         NPV = ifelse(is.na(Unwind_rate) == TRUE, NPV, NPV * Unwind_rate),
+#         Up_Prl = ifelse(is.na(Unwind_rate) == TRUE, Up_Prl, Up_Prl * Unwind_rate),
+#         Notional = ifelse(is.na(Unwind_rate) == TRUE, Notional, Notional * Unwind_rate)
+#     )
+
+load('Spec1.Rdata')
+
+
+
+```
+
+# 축약 통계
+
+## Row1 of Page1
+
+### 참가자(단위 : 사)
+
+```{r}
+valueBox(13,
+         icon = "fa-users",
+         color = '#39568CFF')
+```
+
+### 축약된 계약건수(단위 : 건)
+
+```{r}
+valueBox(comma(nrow(Proposal)),
+         color = '#453781FF',
+         icon = "fa-area-chart")
+```
+
+### 축약된 명목대금(단위 : 억원)
+
+```{r}
+valueBox(comma(data1_Proposal[[3]] / 10 ^ 8),
+         color = '#481567FF',
+         icon = "fa-coins")
+```
+
+## Row2 of Page1
+
+### 축약률1. 전체 청산거래 대비(금액 기준)
+
+```{r}
+gauge(
+    data1_Proposal[[3]] / (sum(Pos_KRW_FN_PV01_pre$Notional) * 2) * 100,
+    min = 0,
+    max = 100,
+    symbol = '%',
+    gaugeSectors(
+        success = c(20, 100),
+        warning = c(10, 20),
+        danger = c(0, 10)
+    )
+)
+```
+
+### 축약률2. 참가자간 청산거래 대비(금액 기준)
+
+```{r}
+gauge(
+    data1_Proposal[[3]] / 
+        (sum(Pos_KRW_FN_PV01_pre_participant$Notional) * 2) * 100, 
+    min = 0,
+    max = 100,
+    symbol = '%',
+    gaugeSectors(
+        success = c(20, 100),
+        warning = c(10, 20),
+        danger = c(0, 10)
+    )
+)
+```
+
+### 축약률3. 최초 매칭단계 거래 대비(금액 기준)
+
+```{r}
+gauge((data1_Proposal[[3]] / 1347939000000000) * 100,
+      min = 0,
+      max = 100,
+      symbol = '%',
+      gaugeSectors(
+          success = c(20, 100),
+          warning = c(10, 20),
+          danger = c(0, 10)
+      )
+)
+```
+
+### 축약률4. 최종 실행단계 거래 대비(금액 기준)
+
+```{r}
+gauge((data1_Proposal[[3]] / sum(T_con$NOTIONAL)) * 100,
+      min = 0,
+      max = 100,
+      symbol = '%',
+      gaugeSectors(
+          success = c(20, 100),
+          warning = c(10, 20),
+          danger = c(0, 10)
+      )
+)
+```
+
+## Row3 of Page1 {data-height="400"}
+
+```{r}
+tags$style("label{color: #90548bff; font-size: 120%;}")
+
+selectInput(
+    "Member",
+    label = "▼참가자 선택▼",
+    choices = lookup,
+    width = "145px",
+    selectize = FALSE,
+    size = 13
+)
+```
+
+### 만기별/지급-수취별 명목금액 변화 {data-width="500"}
+
+```{r}
+dataset1 <- reactive({
+    Compressedfixed_Mat <- Proposal %>%
+        filter(PAY_LEG_TYPE == 'Fixed' &
+                   TRIOPTIMA_PARTY_NAME == input$Member) %>%
+        group_by(Margin_mat) %>%
+        summarise(FIXED = sum(Unwind_NA) / 10 ^ 8)
+    
+    Compressedfloat_Mat <- Proposal %>%
+        filter(PAY_LEG_TYPE == 'Floating' &
+                   TRIOPTIMA_PARTY_NAME == input$Member) %>%
+        group_by(Margin_mat) %>%
+        summarise(FLOATING = sum(Unwind_NA) / 10 ^ 8)
+    
+    Compressed_Mat <-
+        full_join(Compressedfixed_Mat, Compressedfloat_Mat)
+    
+    Compressed_Mat <- Compressed_Mat %>%
+        mutate(
+            Margin_mat = case_when(
+                Margin_mat == 1 ~ '0',
+                Margin_mat == 2 ~ '3',
+                Margin_mat == 3 ~ '6',
+                Margin_mat == 4 ~ '9',
+                Margin_mat == 5 ~ '12',
+                Margin_mat == 6 ~ '18',
+                Margin_mat == 7 ~ '24',
+                Margin_mat == 8 ~ '36',
+                Margin_mat == 9 ~ '48',
+                Margin_mat == 10 ~ '60',
+                Margin_mat == 11 ~ '72',
+                Margin_mat == 12 ~ '84',
+                Margin_mat == 13 ~ '96',
+                Margin_mat == 14 ~ '108',
+                Margin_mat == 15 ~ '120',
+                Margin_mat == 16 ~ '144',
+                Margin_mat == 17 ~ '180',
+                TRUE ~ '240'
+            )
+        )
+    
+    Margin_mat <-
+        data.frame(
+            Margin_mat = c(
+                '0', '3', '6', '9', '12', '18', '24', '36', '48', '60',
+                '72', '84', '96', '108', '120', '144', '180','240')
+        )
+    
+    Compressed_Mat <- left_join(Margin_mat, Compressed_Mat)
+    Compressed_Mat$Margin_mat <-
+        factor(Compressed_Mat$Margin_mat,
+               levels = unique(Compressed_Mat$Margin_mat))
+    Compressed_Mat[is.na(Compressed_Mat)] <- 0
+    
+    Compressed_Mat_Graph <- Compressed_Mat %>%
+        melt(id = 'Margin_mat')
+    
+    print(Compressed_Mat_Graph)
+})
+
+
+renderPlotly({
+    NAGraph <-
+        ggplot(dataset1(), aes(x = Margin_mat, y = value, fill = variable)) +
+        geom_col(position = "dodge", width = 0.7) +
+        scale_fill_hue(direction = - 1) +
+        scale_y_continuous(labels = comma) +
+        labs(x = "잔존만기(개월)", y = "축약금액(억원)", fill = "") +
+        theme_minimal() +
+        theme(
+            legend.position = c(0.15, 0.75),
+            legend.text = element_text(size = 10),
+            axis.title = element_text(size = 14),
+            axis.text.x = element_text(size = 10),
+            axis.text.y = element_text(size = 10)
+        )
+    ggplotly(NAGraph)
+})
+```
+
+### CCP 축약 손익분석
+
+```{r}
+renderPlotly({
+    Compfee_graph <-
+        ggplot(Compfee_result, aes(x = TRIOPTIMA_PARTY_NAME, 
+                                   y = value / 10 ^ 6, 
+                                   fill = variable)) +
+        geom_col(position = "dodge", width = 0.7) +
+        scale_fill_manual(values = c('#00BFC4', '#F8766D', '#FF61c9')) +
+        scale_y_continuous(labels = comma) +
+        labs(x = "참가자명", y = "수수료손익(백만원)", fill = "") +
+        theme_minimal() +
+        theme(
+            legend.position = c(0.15, 0.75),
+            legend.text = element_text(size = 10),
+            axis.title = element_text(size = 14),
+            axis.text.x = element_text(size = 10),
+            axis.text.y = element_text(size = 10)
+        )
+    ggplotly(Compfee_graph)
+})
+
+```
+
+## Row4 of Page1 {data-height="350"}
+
+### Table1-1 {.no-title}
+
+```{r}
+DT1 <- datatable(
+    CompressedNA,
+    style = 'bootstrap4',
+    colnames = c(
+        '참가자명',
+        '축약금액_지급(억원)',
+        '축약금액_수취(억원)',
+        '축약금액_합계(억원)',
+        '전체 대비_비중(%)',
+        '축약가능거래(억원)',
+        '개별축약률(%)'
+    ),
+    options = list(dom = 't', pageLength = nrow(CompressedNA))
+) %>%
+    formatRound(
+        columns = c(
+            'sum_fixed',
+            'sum_float',
+            'SUM_NA',
+            'SUM_Proportion',
+            'PossibleTrade',
+            'CompressionRate'
+        ),
+        digits = 1
+    )
+
+renderDataTable({DT1})
+```
+
+### Table1-2 {.no-title}
+
+```{r}
+
+renderDataTable({
+  datatable(
+    Compfee_table,
+    extensions = c('Buttons', 'Scroller'),
+    style = 'bootstrap4',
+    colnames = c('대상 참가자',
+                 '감소된 미래 청산수수료(백만원)',
+                 '축약 수수료수익(백만원)',
+                 '수수료수익_합계(백만원)',
+                 '무'),
+    options = list(
+      dom = 't',
+      pageLength = nrow(Compfee_table),
+      columnDefs = list(list(
+        visible = FALSE, targets = c(5)
+      ))
+    )
+  ) %>%
+    formatRound(
+      columns = c('Fee_poten',
+                  'Fee_comp',
+                  'Fee_sum',
+                  'Sum_index'),
+      digits = 1
+    ) %>%
+    formatStyle(
+      "Sum_index",
+      target = 'row',
+      backgroundColor = styleEqual(c(1, 0), c('#d7d7d7', 'white')),
+      fontWeight = styleEqual(c(1), c('bold')),
+      color = styleEqual(c(1), c('#0e0e0e')),
+      fontSize = styleEqual(c(1), c('20px'))
+    )
+})
+
+```
+
+# 리스크 모니터링
+
+## Row1 of Page2
+
+### 참가자별 PV01 변화 {data-width="500"}
+
+```{r}
+
+renderPlotly({
+    Compressed_PV01_graph <- Compressed_PV01_PVBP_member %>%
+        ggplot(aes(x = TRIOPTIMA_PARTY_NAME, weight = value / 10 ^ 6)) +
+        geom_bar(fill = "#f9a242ff", width = 0.7) +
+        labs(x = NULL, y = "PV01변화(백만원)") +
+        scale_y_continuous(labels = label_number(accuracy = 1)) +
+        theme_minimal() +
+        theme(axis.title = element_text(size = 14),
+              axis.text = element_text(size = 9))
+    
+    ggplotly(Compressed_PV01_graph,)
+})
+
+```
+
+### 참가자별 포지션 Value-at-Risk(99.7%) 변화 {data-width="500"}
+
+```{r}
+
+renderPlotly({
+    IM_comp_graph <-
+        ggplot(IM_comp, aes(x = Member, y = value, fill = variable)) +
+        geom_col(position = "dodge", width = 0.6) +
+        scale_y_continuous(labels = comma) +
+        labs(x = NULL, y = "VaR(억원)", fill = "") +
+        theme_minimal() +
+        scale_fill_brewer(palette = 'Set1', direction = -1) +
+        theme(
+            legend.text = element_text(size = 11),
+            axis.title = element_text(size = 14),
+            axis.text = element_text(size = 9)
+        )
+    
+    ggplotly(IM_comp_graph)
+})
+
+```
+
+### 참가자별 포지션 Stress Test값 변화 {data-width="500"}
+
+```{r}
+
+renderPlotly({
+    EVT_comp_graph <-
+        ggplot(EVT_comp, aes(x = Member, y = value, fill = variable)) +
+        geom_col(position = "dodge", width = 0.6) +
+        scale_y_continuous(labels = comma) +
+        labs(x = NULL, y = "Exposure(억원)", fill = "") +
+        theme_minimal() +
+        scale_fill_brewer(palette = 'Set1', direction = -1) +
+        theme(
+            legend.text = element_text(size = 11),
+            axis.title = element_text(size = 14),
+            axis.text = element_text(size = 9)
+        )
+    
+    ggplotly(EVT_comp_graph)
+})
+
+```
+
+
+## Row2 of Page2
+
+### Table2-1 {.no-title}
+
+```{r}
+renderDataTable({
+    datatable(
+        Compressed_PV01_Table,
+        style = 'bootstrap4',
+        colnames = c(
+            '참가자명',
+            '축약전PV01',
+            '허용위험',
+            'PV01변화_회원',
+            'PV01변화_KRX',
+            '변화율_KRX(%)'
+        ),
+        options = list(dom = 't', pageLength = 13)
+    ) %>%
+        formatRound(
+            columns = c(
+                'Original_PV01',
+                'Tolerance',
+                'Comp_PV01_member',
+                'Proposal_PV01',
+                'PV01_chgrate'
+            ),
+            digits = 1
+        )
+})
+
+```
+
+### Table2-2 {.no-title}
+
+```{r}
+renderDataTable({
+    datatable(
+        IM_diff_table,
+        extensions = c('Buttons', 'Scroller'),
+        style = 'bootstrap4',
+        colnames = c('전체청산계좌',
+                     '회원명',
+                     'VaR(전)',
+                     'VaR(후)',
+                     'VaR변화',
+                     '변화율(%)',
+                     '무'),
+        options = list(
+            dom = 't',
+            pageLength = nrow(IM_diff_table),
+            columnDefs = list(
+                list(visible = FALSE, targets = c(7)),
+                list(width = '50px', targets = c(2))
+            )
+        )
+    ) %>%
+        formatRound(
+            columns = c('IM.x',
+                        'IM.y',
+                        'IM.diff',
+                        'IM.diffrate'),
+            digits = 1
+        ) %>%
+        formatStyle("IM.comp_participant",
+                    target = 'row',
+                    backgroundColor = styleEqual(c(1, 0), c('white', '#B0E0E6')))
+})
+
+```
+
+### Table2-3 {.no-title}
+
+```{r}
+renderDataTable({
+    datatable(
+        EVT_diff_table,
+        extensions = c('Buttons', 'Scroller'),
+        style = 'bootstrap4',
+        colnames = c(
+            '참가자',
+            'Exposure(전)',
+            'Exposure(후)',
+            'Exposure변화',
+            '변화율(%)'
+        ),
+        options = list(
+            dom = 't',
+            pageLength = nrow(EVT_diff_table),
+            columnDefs = list(list(
+                width = '50px', targets = c(1)
+            ))
+        )
+    ) %>%
+        formatRound(
+            columns = c('EVT_pre',
+                        'EVT_aft',
+                        'EVT.diff',
+                        'EVT.diffrate'),
+            digits = 1
+        )
+})
+```
+
+## Row3 of Page2
+
+```{r}
+selectInput(
+    "Member2",
+    label = "▼참가자 선택▼",
+    choices = lookup_Bucket,
+    width = "145px",
+    selectize = FALSE,
+    size = 13
+)
+```
+
+### \> 참가자별/만기별 PV01변화 {data-width=500}
+
+```{r}
+dataset_BucketDelta <- reactive({
+    PVBP_Bucket <- Comp_PV01_temp[, -c(20, 21)] %>%
+        filter(TRIOPTIMA_PARTY_NAME == input$Member2)
+    
+    PVBP_Bucket <-
+        rbind(PVBP_Bucket[, -1], c(apply(PVBP_Bucket[, -1], 2, sum)))[c(1, 3),]
+    
+    PVBP_Bucket <-
+        PVBP_Bucket %>% mutate(id = c('PV01(전)', 'PV01(후)')) %>%
+        melt()
+    
+    print(PVBP_Bucket)
+})
+
+
+renderPlotly({
+    PVBP_Bucket_graph <-
+        ggplot(dataset_BucketDelta(),
+               aes(
+                   x = variable,
+                   y = value / 10 ^ 6,
+                   fill = id
+               )) +
+        geom_col(position = "dodge", width = 0.7) +
+        labs(x = "만기", y = "PV01변화(백만원)", fill = "") +
+        theme_minimal() +
+        scale_fill_brewer(palette = 'Set1', direction = -1) +
+        scale_x_discrete(
+            labels = c(
+                "1D",
+                "3M",
+                "6M",
+                "9M",
+                "1Y",
+                "18M",
+                "2Y",
+                "3Y",
+                '4Y',
+                '5Y',
+                '6Y',
+                '7Y',
+                '8Y',
+                '9Y',
+                '10Y',
+                '12Y',
+                '15Y',
+                '20Y'
+            )
+        ) +
+        scale_y_continuous(labels = comma) +
+        theme(
+            legend.position = c(0.65, 0.75),
+            legend.text = element_text(size = 11),
+            axis.title = element_text(size = 14),
+            axis.text = element_text(size = 9)
+        )
+    
+    ggplotly(PVBP_Bucket_graph)
+    
+})
+```
+
+### \> 사전증거금의 위험커버율 {data-width=200} 
+
+```{r}
+renderPlotly({
+    IM_coverrate_graph <- IM_coverrate_graph %>%
+        melt() %>%
+        ggplot(aes(x = Member, weight = value)) +
+        geom_bar(fill = "#FDCDAC", width = 0.5) +
+        geom_hline(
+            yintercept = 100,
+            linetype = "dashed",
+            color = "#E41A1C",
+            size = 0.3
+        ) +
+        labs(x = NULL, y = "위험커버율(%)") +
+        scale_y_continuous(labels = label_number(accuracy = 1)) +
+        theme_minimal() +
+        theme(axis.title = element_text(size = 13),
+              axis.text = element_text(size = 11)) +
+        coord_flip()
+    
+    ggplotly(IM_coverrate_graph)
+})
+```
+
+### \> 사전증거금의 위험커버율 table {.no-title data-width=300}
+
+```{r}
+renderDataTable({
+    datatable(
+        IM_coverrate_table,
+        class = "display nowrap",
+        extensions = c('Buttons', 'Scroller'),
+        style = 'bootstrap4',
+        colnames = c('참가자명',
+                     'VaR증가(억원)',
+                     '사전증거금(억원)',
+                     '커버율(%)',
+                     '무'),
+        options = list(
+            dom = 't',
+            pageLength = nrow(IM_coverrate_table),
+            autoWidth = TRUE,
+            columnDefs = list(list(
+                visible = FALSE, targets = c(5)
+            )),
+            order = list(4, 'desc')
+        )
+    ) %>%
+        formatRound(columns = c('IM.diff', 'MAR_sum', 'Coverrate'),
+                    digits = 1) %>%
+        formatStyle(
+            "CoverFinal",
+            target = 'row',
+            backgroundColor = styleEqual(c(1), c('#FDCDAC')),
+            fontWeight = styleEqual(c(1), c('bold')),
+            color = styleEqual(c(0, 1), c('#cdc8b1', '#E41A1C'))
+        )
+})
+
+```
+
+
+
+# 시각화 자료
+
+## Row1 of Page3 {data-height="450"}
+
+```{r}
+selectInput("NET",
+            label = "▼관계도 선택▼",
+            choices = lookup_NET,
+            width = "145px")
+```
+
+### Network Graph {data-width="300"}
+
+```{r}
+dataset_NET <- reactive({
+    Net_var <- input$NET
+    
+    Proposal_Network <- Proposal_Network %>%
+        filter(PAY_LEG_TYPE == 'Fixed') %>%
+        select(TRIOPTIMA_PARTY_NAME, TRIOPTIMA_CP_NAME, (!!as.symbol(Net_var))) %>%
+        group_by(TRIOPTIMA_PARTY_NAME, TRIOPTIMA_CP_NAME) %>%
+        summarise(Sum = sum(!!as.symbol(Net_var)))
+    
+    Proposal_Network <-
+        #adjacency_matrix 생성
+        acast(Proposal_Network,
+              TRIOPTIMA_PARTY_NAME ~ TRIOPTIMA_CP_NAME,
+              fill = 0)
+    
+    NET <- graph_from_adjacency_matrix(
+        Proposal_Network,
+        mode = 'directed',
+        weighted = 'Sum',
+        diag = FALSE
+    )
+    
+    E(NET)$width <-
+        E(NET)$Sum ^ 1.5  / (mean(E(NET)$Sum) ^ 1.5)  #edge 두께 조정(차이 확대, 표준화)
+    E(NET)$arrow.mode = 2
+    E(NET)$color = 'darkturquoise'
+    
+    deg <-
+        (degree(NET, mode = "all") - 8) ^ 2 / 10  #degree 조정(차이 확대)
+    
+    V(NET)$size = deg
+    V(NET)$color = 'skyblue'
+    V(NET)$font.size = 30
+    V(NET)$font.color = 'black'
+    
+    set.seed(100)
+    
+    permute(NET, permutation = sample(vcount(NET)))
+})
+
+renderVisNetwork({
+    visIgraph(
+        dataset_NET(),
+        layout = "layout_in_circle",
+        smooth = TRUE,
+        idToLabel = FALSE
+    ) %>%
+        visOptions(highlightNearest = TRUE)
+})
+```
+
+### Adjacency Matrix(단위 : 억원)  {data-width="700"}
+
+```{r}
+dataset_NET_MAT <- reactive({
+    Net_var <- input$NET
+    
+    Proposal_Network <- Proposal_Network %>%
+        filter(PAY_LEG_TYPE == 'Fixed') %>%
+        select(TRIOPTIMA_PARTY_NAME, TRIOPTIMA_CP_NAME, (!!as.symbol(Net_var))) %>%
+        group_by(TRIOPTIMA_PARTY_NAME, TRIOPTIMA_CP_NAME) %>%
+        summarise(Sum = sum(!!as.symbol(Net_var)) / 10 ^ 8)
+    
+    Proposal_Network_Matrix <-
+        #adjacency_matrix 생성
+        acast(Proposal_Network,
+              TRIOPTIMA_PARTY_NAME ~ TRIOPTIMA_CP_NAME,
+              fill = 0)
+    
+    print(Proposal_Network_Matrix)
+})
+
+renderDataTable(
+    datatable(
+        dataset_NET_MAT(),
+        class = "display nowrap",
+        extensions = c('Buttons', 'Scroller'),
+        style = 'bootstrap4',
+        options = list(
+            dom = 't',
+            pageLength = 13,
+            ordering = F
+        )
+    ) %>%
+        formatRound(columns = c(colnames(dataset_NET_MAT(
+            
+        ))),
+        digits = 1)
+)
+
+```
+
+## Row2 of Page3
+
+### 축약거래 3D Plot {data-width="300"}
+
+```{r}
+Proposal_3D <- Proposal_Network %>%
+    filter(PAY_LEG_TYPE == 'Fixed') %>%
+    mutate(
+        MTM = CLOSE_OUT_AMOUNT / 10 ^ 8,
+        NOTIONAL = Unwind_NA / 10 ^ 8,
+        Mat_Year = as.numeric(unlist(Maturity)) / 365
+    ) %>%
+    select(MTM, NOTIONAL, Mat_Year, TRIOPTIMA_PARTY_NAME)
+
+Proposal_3DGraph <- plot_ly(
+    Proposal_3D,
+    x = ~ NOTIONAL,
+    y = ~ Mat_Year,
+    z = ~ MTM,
+    color = ~ TRIOPTIMA_PARTY_NAME,
+    colors = brewer.pal(n = 13, name = 'Paired'),
+    type = 'scatter3d',
+    mode = 'markers',
+    marker = list(size = 3)
+) %>%
+    layout(
+        scene = list(
+            xaxis = list(title = "명목금액(억원)"),
+            yaxis = list(title = "잔존만기(년)"),
+            zaxis = list(title = "평가가치(억원)")
+        ),
+        margin = list(
+            l = 0,
+            r = 0,
+            b = 0,
+            t = 10
+        )
+    )
+renderPlotly(Proposal_3DGraph)
+
+```
+
+### 축약거래 명세 통계1 {data-width="233"}
+
+```{r}
+renderPlotly({
+    Spec1_Notional <- Spec1 %>%
+        ggplot(aes(Compressed, Notional / (10 ^ 8))) +
+        geom_boxplot(color = "gray20",
+                     width = 0.15,
+                     alpha = 0.25) +
+        geom_violin(aes(col = Compressed, fill = Compressed), alpha = 0.25) +
+        labs(x = '축약여부', y = "명목금액(억원)",
+             title = "- 축약여부에 따른 명목금액 분포 -")   +
+        theme_minimal() +
+        theme(legend.position = "none")
+    
+    ggplotly(Spec1_Notional)
+})
+```
+
+### 축약거래 명세 통계2 {data-width="233"}
+
+```{r}
+renderPlotly({
+    Spec1_PV01 <- Spec1 %>%
+        ggplot(aes(Compressed, Up_Prl / (10 ^ 6))) +
+        geom_boxplot(color = "gray20",
+                     width = 0.15,
+                     alpha = 0.25) +
+        geom_violin(aes(col = Compressed, fill = Compressed), alpha = 0.25) +
+        labs(x = '축약여부', y = "PV01(백만원)",
+             title = "- 축약여부에 따른 PV01 분포 -")   +
+        theme_minimal() +
+        theme(legend.position = "none")
+    
+    ggplotly(Spec1_PV01)
+})
+```
+
+### 축약거래 명세 통계3 {data-width="233"}
+
+```{r}
+renderPlotly({
+    Spec1_NPV <- Spec1 %>%
+        ggplot(aes(Compressed, NPV / (10 ^ 8))) +
+        geom_boxplot(color = "gray20",
+                     width = 0.15,
+                     alpha = 0.25) +
+        geom_violin(aes(col = Compressed, fill = Compressed), alpha = 0.25) +
+        labs(x = '축약여부', y = "NPV(억원)",
+             title = "- 축약여부에 따른 NPV 분포 -")   +
+        theme_minimal() +
+        theme(legend.position = "none")
+    
+    ggplotly(Spec1_NPV)
+})
+```
