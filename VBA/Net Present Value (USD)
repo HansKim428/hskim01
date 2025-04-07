@@ -1,0 +1,1128 @@
+Option Explicit
+'자료 가져오기
+Sub Open_Resource()
+
+With Application
+.ScreenUpdating = False
+.DisplayStatusBar = False
+.Calculation = xlCalculationManual
+.EnableEvents = False
+.DisplayAlerts = False
+End With
+
+
+'산출일 입력
+Dim Cal_Day As Date
+
+''''*****일별 산출용*****''''
+'    Cal_Day = Application.InputBox("산출일 입력", Default:="YYYY-MM-DD", Type:=2)
+'    Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("E1") = Cal_Day
+    
+    
+'금리 파일 Open
+Workbooks("USD multi NPV.xlsm").Activate
+Workbooks.Open Filename:="C:\Users\NO160\Desktop\NPV\금리 파라미터", ReadOnly:=False
+
+Dim J As Integer, K As Integer, Mat_N As Integer
+'단기금리
+Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("E4") = Application.WorksheetFunction.VLookup _
+        (Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("E1"), Workbooks("금리 파라미터.xlsx").Worksheets("USD OIS").Range("A1").CurrentRegion, 2)
+Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("F4") = Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("e4")
+Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("I4") = Application.WorksheetFunction.VLookup _
+        (Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("E1"), Workbooks("금리 파라미터.xlsx").Worksheets(3).Range("A1").CurrentRegion, 2)
+Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("L4") = Application.WorksheetFunction.VLookup _
+        (Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("E1"), Workbooks("금리 파라미터.xlsx").Worksheets(4).Range("A1").CurrentRegion, 2)
+
+'OIS
+    For J = 5 To 40
+     For Mat_N = 2 To 31
+        If Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Cells(3, J) = Workbooks("금리 파라미터.xlsx").Worksheets("USD OIS"). _
+        Cells(1, Mat_N) Then Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Cells(5, J) = Application.WorksheetFunction.VLookup _
+        (Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("E1"), Workbooks("금리 파라미터.xlsx").Worksheets("USD OIS").Range("A1").CurrentRegion, Mat_N)
+     Next Mat_N
+    Next J
+'IRS
+    For J = 5 To 40
+     For Mat_N = 2 To 31
+        If Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Cells(3, J) = Workbooks("금리 파라미터.xlsx").Worksheets(3). _
+        Cells(1, Mat_N) Then Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Cells(6, J) = Application.WorksheetFunction.VLookup _
+        (Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("E1"), Workbooks("금리 파라미터.xlsx").Worksheets(3).Range("A1").CurrentRegion, Mat_N)
+     Next Mat_N
+    Next J
+'Basis
+    For J = 5 To 40
+     For Mat_N = 2 To 31
+        If Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Cells(3, J) = Workbooks("금리 파라미터.xlsx").Worksheets(4). _
+        Cells(1, Mat_N) Then Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Cells(7, J) = Application.WorksheetFunction.VLookup _
+        (Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("E1"), Workbooks("금리 파라미터.xlsx").Worksheets(4).Range("A1").CurrentRegion, Mat_N)
+     Next Mat_N
+    Next J
+ 
+Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("D3:AN7").SpecialCells(Type:=xlCellTypeBlanks).Value = "-"
+    For K = 4 To 7
+       For J = 5 To 40
+          If Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Cells(K, J).Value <> "-" Then
+          Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Cells(K, J) = Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Cells(K, J) / 100
+          End If
+     Next J
+    Next K
+
+ 
+'달력 파일 Open
+Dim Pathname As String, Filename As String
+Pathname = "C:\Users\NO160\Desktop\NPV\Calendar\"
+Filename = Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("E2")
+Workbooks.Open Filename:=Pathname & Filename, ReadOnly:=False
+ActiveWorkbook.Worksheets(1).Columns(1).Copy
+  Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(1, 1).PasteSpecial Paste:=xlValues
+
+'달력 파일 복붙
+   Dim i As Integer
+   For i = 2 To 4
+    If Workbooks(3).Worksheets(1).Cells(1, i).Value = "SeB" Or Workbooks(3).Worksheets(1).Cells(1, i).Value = _
+      "NYB" Or Workbooks(3).Worksheets(1).Cells(1, i).Value = "LnB" Then Workbooks(3).Worksheets(1).Columns(i).Copy
+        Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(1, i).PasteSpecial Paste:=xlValues
+    Next i  '더 간단한 방법 필요
+    
+Dim L_L As Integer, Cal_Num As Integer
+Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(1, 5).Value = "MASTER"  '22.1월 수정 : 거래정보 요구 프로시저로부터 이동
+Cal_Num = Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Range("A1").CurrentRegion.Rows.Count
+
+For L_L = 2 To Cal_Num
+      If Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 2) = "g" And Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 3) = "g" And _
+      Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 4) = "g" Then
+            Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 5).Value = "g"
+      Else
+        Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 5).Value = "w"
+      End If
+Next L_L
+
+Workbooks(3).Close
+Workbooks("USD multi NPV.xlsm").Activate
+End Sub
+Sub Del_Resource()
+Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range(Worksheets("Rate").Cells(4, 5), Worksheets("Rate").Cells(7, 40)).ClearContents
+Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Range("E1").ClearContents
+Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Range("A1").CurrentRegion.ClearContents
+End Sub
+'영업일 찾기
+Sub Busi_Find()
+Application.DisplayAlerts = False
+Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("C2") = Worksheets("Rate").Range("E1")
+'''''''''''''''''''날짜 찍기 = 익영업일 기준으로 하는게 아닐 수도 있음(<->원화) / 각 금리의 effective date 고려하는 것일 수 있음(<->원화)
+'''''''''''''''''''아래 버전은 '익영업일 기준 날짜 찍기 미적용', 'effective date 고려 적용' ===> LIBOR 3m금리는 산출일+2D+3M으로 적용
+
+ Dim Rates_M As Range     'Rate 자료 정리
+    For Each Rates_M In Workbooks("USD multi NPV.xlsm").Worksheets("Rate").Rows(3).Cells
+        If Right(Rates_M, 1) = "M" Then
+            Rates_M.Value = Application.WorksheetFunction.Substitute(Rates_M, "M", "")
+            ElseIf Right(Rates_M, 1) = "Y" Then
+            Rates_M.Value = Application.WorksheetFunction.Substitute(Rates_M, "Y", "") * 12
+        End If
+    Next Rates_M
+    
+'<<<<<<<<<<OIS 및 할인커브>>>>>>>>>>
+
+    Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("C9") = Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("C2").Value + 1     'O/N찾기
+     Do Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Range("C9"), Worksheets("Cal").Range("A1").CurrentRegion, 3) = "g"
+            Worksheets("Busi_Find").Range("C9") = Worksheets("Busi_Find").Range("C9") + 1
+     Loop
+     
+    Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("C10") = Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("C9").Value + 1     'T/N=Effective date찾기
+     Do Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Range("C10"), Worksheets("Cal").Range("A1").CurrentRegion, 3) = "g"
+            Worksheets("Busi_Find").Range("C10") = Worksheets("Busi_Find").Range("C10") + 1
+     Loop
+
+    Dim J As Integer
+        For J = 11 To 74    'After Tenor
+            Worksheets("Busi_Find").Cells(J, 3) = Application.WorksheetFunction.EDate(Worksheets("Busi_Find").Range("C10").Value, Worksheets("Busi_Find").Cells(J, 2).Value)
+        Next J
+      
+    Dim K As Integer, L As Integer       'Following
+       For K = 11 To 74
+           Do Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Cells(K, 3), Worksheets("Cal").Range("A1").CurrentRegion, 3) = "g"
+               Worksheets("Busi_Find").Cells(K, 3) = Worksheets("Busi_Find").Cells(K, 3) + 1
+           Loop
+      Next K
+
+       For L = 11 To 74      'Preceding
+          If (Month(Worksheets("Busi_Find").Cells(L, 3)) - Month(Worksheets("Busi_Find").Range("C10")) - Worksheets("Busi_Find").Cells(L, 2)) Mod 12 <> 0 Then
+            Do
+                Worksheets("Busi_Find").Cells(L, 3) = Worksheets("Busi_Find").Cells(L, 3) - 1
+            Loop Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Cells(L, 3), Worksheets("Cal").Range("A1").CurrentRegion, 3) = "g"
+           End If
+        Next L
+
+'<<<<<<<<<<3M IRS>>>>>>>>>>--%%%%%%%%%%%%%%%%%%%%%%미완성-2영업일 따질때 조건이 +1영업일이 ny/ln 영업일인지 보고 거기서 또 +1영업일이 ny/ln인지 보는것인지?- 결국 뉴욕만 휴일인 경우 어떻게 찍히는지 확인 필요  '22.1월 추가수정(LN,NY에서 모두 고려로)
+    Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("K5") = Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("C2").Value + 1     'Ln&NY 기준 Effective date찾기
+     Do Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Range("K5"), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g" And Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Range("K5"), Worksheets("Cal").Range("A1").CurrentRegion, 3) = "g"
+            Worksheets("Busi_Find").Range("K5") = Worksheets("Busi_Find").Range("K5") + 1
+     Loop
+    Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("K6") = Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("K5").Value + 1
+     Do Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Range("K6"), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g" And Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Range("K6"), Worksheets("Cal").Range("A1").CurrentRegion, 3) = "g"
+            Worksheets("Busi_Find").Range("K6") = Worksheets("Busi_Find").Range("K6") + 1
+     Loop
+
+    Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("N5") = Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("C2").Value + 1     'Ln 기준 Effective date찾기
+     Do Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Range("N5"), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g"
+            Worksheets("Busi_Find").Range("N5") = Worksheets("Busi_Find").Range("N5") + 1
+     Loop
+    Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("N6") = Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("N5").Value + 1     'Ln 기준 Effective date찾기
+     Do Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Range("N6"), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g"
+            Worksheets("Busi_Find").Range("N6") = Worksheets("Busi_Find").Range("N6") + 1
+     Loop
+
+ Dim i As Integer        '3N개월 입력
+        For i = 3 To 600 Step 3
+            Worksheets("Busi_Find").Cells(i / 3 + 8, 10) = i
+        Next i
+
+     '3N개월 이후 날짜  ''22.1월 수정: 영업일 기준지역 모두 고려로
+        For J = 1 To 200
+            Worksheets("Busi_Find").Cells(J + 8, 11) = Application.WorksheetFunction.EDate(Worksheets("Busi_Find").Range("K6").Value, Worksheets("Busi_Find").Cells(J + 8, 10).Value)
+            Worksheets("Busi_Find").Cells(J + 8, 14) = Application.WorksheetFunction.EDate(Worksheets("Busi_Find").Range("N6").Value, Worksheets("Busi_Find").Cells(J + 8, 10).Value)
+        Next J
+               
+        For K = 9 To 208       'Following
+            Do Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Cells(K, 11), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g" And Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Cells(K, 11), Worksheets("Cal").Range("A1").CurrentRegion, 3) = "g"
+                Worksheets("Busi_Find").Cells(K, 11) = Worksheets("Busi_Find").Cells(K, 11) + 1
+            Loop
+            
+            Do Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Cells(K, 14), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g"
+                Worksheets("Busi_Find").Cells(K, 14) = Worksheets("Busi_Find").Cells(K, 14) + 1
+            Loop
+        Next K
+    
+        For L = 9 To 208      'Preceding
+            If (Month(Worksheets("Busi_Find").Cells(L, 11)) - Month(Worksheets("Busi_Find").Range("K6"))) Mod 3 <> 0 Then
+             Do
+                Worksheets("Busi_Find").Cells(L, 11) = Worksheets("Busi_Find").Cells(L, 11) - 1
+             Loop Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Cells(L, 11), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g" And Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Cells(L, 11), Worksheets("Cal").Range("A1").CurrentRegion, 3) = "g"
+            End If
+            If (Month(Worksheets("Busi_Find").Cells(L, 14)) - Month(Worksheets("Busi_Find").Range("K6"))) Mod 3 <> 0 Then
+             Do
+                Worksheets("Busi_Find").Cells(L, 14) = Worksheets("Busi_Find").Cells(L, 14) - 1
+             Loop Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Cells(L, 14), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g"
+            End If
+        Next L
+             
+             
+'<<<<<<<<<<6M IRS>>>>>>>>>> '22.1월 추가수정(LN,NY에서 모두 고려로)
+    Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("W5") = Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("C2").Value + 1
+     Do Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Range("W5"), Worksheets("Cal").Range("A1").CurrentRegion, 5) = "g"
+            Worksheets("Busi_Find").Range("W5") = Worksheets("Busi_Find").Range("W5") + 1
+     Loop
+    Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("W6") = Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("W5").Value + 1
+     Do Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Range("W6"), Worksheets("Cal").Range("A1").CurrentRegion, 5) = "g"
+            Worksheets("Busi_Find").Range("W6") = Worksheets("Busi_Find").Range("W6") + 1
+     Loop
+
+
+     '3N개월 입력
+        For i = 6 To 600 Step 6
+            Worksheets("Busi_Find").Cells(i / 6 + 8, 22) = i
+        Next i
+
+     '3N개월 이후 날짜
+        For J = 1 To 100
+            Worksheets("Busi_Find").Cells(J + 8, 23) = Application.WorksheetFunction.EDate(Worksheets("Busi_Find").Range("W6").Value, Worksheets("Busi_Find").Cells(J + 8, 22).Value)
+        Next J
+               
+        For K = 9 To 108       'Following
+            Do Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Cells(K, 23), Worksheets("Cal").Range("A1").CurrentRegion, 5) = "g"
+                Worksheets("Busi_Find").Cells(K, 23) = Worksheets("Busi_Find").Cells(K, 23) + 1
+            Loop
+        Next K
+    
+        For L = 9 To 108      'Preceding
+            If (Month(Worksheets("Busi_Find").Cells(L, 23)) - Month(Worksheets("Busi_Find").Range("W6"))) Mod 6 <> 0 Then
+             Do
+                Worksheets("Busi_Find").Cells(L, 23) = Worksheets("Busi_Find").Cells(L, 23) - 1
+             Loop Until Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Cells(L, 23), Worksheets("Cal").Range("A1").CurrentRegion, 5) = "g"
+            End If
+        Next L
+        
+        
+
+
+'''<<<<<<<<<<OIS 및 할인커브>>>>>>>>>>
+
+     Worksheets("Busi_Find").Columns(4).NumberFormat = "#,##0.0000000000"
+     Worksheets("Busi_Find").Columns(6).NumberFormat = "#,##0.0000000000"
+     Worksheets("Busi_Find").Columns(8).NumberFormat = "#,##0.0000000000"
+     
+'Rate 가져오기, 보간
+
+     Worksheets("Busi_Find").Cells(9, 4) = Worksheets("Rate").Range("E4")
+     Worksheets("Busi_Find").Cells(10, 4) = Worksheets("Rate").Range("F4")
+     
+    Dim M_raw As Integer, Prm_Ten As Integer
+    
+        For M_raw = 11 To 74
+          For Prm_Ten = 1 To 36
+           If Worksheets("Rate").Cells(3, 4 + Prm_Ten) = Worksheets("Busi_Find").Cells(M_raw, 2) Then
+            Worksheets("Busi_Find").Cells(M_raw, 4) = Worksheets("Rate").Cells(5, 4 + Prm_Ten)
+           End If
+          Next Prm_Ten
+        Next M_raw
+        For M_raw = 11 To 74
+         If Worksheets("Busi_Find").Cells(M_raw, 4) = "-" Then
+            Worksheets("Busi_Find").Cells(M_raw, 4) = ""
+         End If
+        Next M_raw
+    Worksheets("Busi_Find").Range("D8").ColumnWidth = 0.2
+    Worksheets("Busi_Find").Range("D9:D74").Copy Destination:=Worksheets("Busi_Find").Range("E9")
+    Worksheets("Busi_Find").Range("E8").Value = "Rate"
+    Worksheets("Busi_Find").Range("E9:E74").SpecialCells(xlCellTypeConstants).Font.Color = RGB(200, 0, 200)
+    
+    Worksheets("Busi_Find").Range("E65:E74").Value = Worksheets("Busi_Find").Range("E64")
+    
+Dim N_Blank As Integer
+    For N_Blank = 9 To 64
+        If Worksheets("Busi_Find").Cells(N_Blank, 5) = "" Then
+            Worksheets("Busi_Find").Cells(N_Blank, 5) = Application.WorksheetFunction.Round(Worksheets("Busi_Find").Cells(N_Blank, 4).End(xlUp) + (Worksheets("Busi_Find").Cells(N_Blank, 4).End(xlDown) _
+            - Worksheets("Busi_Find").Cells(N_Blank, 4).End(xlUp)) * (Worksheets("Busi_Find").Cells(N_Blank, 3) - Worksheets("Busi_Find").Cells(N_Blank, 4).End(xlUp).Offset(0, -1)) / _
+            (Worksheets("Busi_Find").Cells(N_Blank, 4).End(xlDown).Offset(0, -1) - Worksheets("Busi_Find").Cells(N_Blank, 4).End(xlUp).Offset(0, -1)), 10)
+        End If
+    Next N_Blank
+
+
+'DF 산출
+    Workbooks("USD multi NPV.xlsm").Activate
+
+    Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("F9") = Application.WorksheetFunction.Round(1 / (1 + Worksheets("Busi_Find").Range("E9") * (Worksheets("Busi_Find").Range("C9") - Worksheets("Busi_Find").Range("C2")) / 360), 10)  'FFER O/N
+    Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range("F10") = Application.WorksheetFunction.Round(Worksheets("Busi_Find").Range("F9") / (1 + Worksheets("Busi_Find").Range("E10") * (Worksheets("Busi_Find").Range("C10") - Worksheets("Busi_Find").Range("C9")) / 360), 10) 'FFER T/N
+    
+Dim DF_OIS As Integer
+
+    For DF_OIS = 11 To 22   '1년 이하
+         Worksheets("Busi_Find").Cells(DF_OIS, 6) = Application.WorksheetFunction.Round(Worksheets("Busi_Find").Range("F10") / (1 + Worksheets("Busi_Find").Cells(DF_OIS, 5) * (Worksheets("Busi_Find").Cells(DF_OIS, 3) - Worksheets("Busi_Find").Range("C10")) / 360), 10)
+    Next DF_OIS
+    
+    Worksheets("Busi_Find").Cells(23, 6) = Application.WorksheetFunction.Round((Worksheets("Busi_Find").Range("F10") - Worksheets("Busi_Find").Cells(23, 5) * (Worksheets("Busi_Find").Cells(13, 3) - Worksheets("Busi_Find").Range("C10")) * Worksheets("Busi_Find").Cells(13, 6) / 360) / (1 + Worksheets("Busi_Find").Cells(23, 5) * (Worksheets("Busi_Find").Cells(23, 3) - Worksheets("Busi_Find").Cells(13, 3)) / 360), 10)  '15~21M,10
+    Worksheets("Busi_Find").Cells(24, 6) = Application.WorksheetFunction.Round((Worksheets("Busi_Find").Range("F10") - Worksheets("Busi_Find").Cells(24, 5) * (Worksheets("Busi_Find").Cells(16, 3) - Worksheets("Busi_Find").Range("C10")) * Worksheets("Busi_Find").Cells(16, 6) / 360) / (1 + Worksheets("Busi_Find").Cells(24, 5) * (Worksheets("Busi_Find").Cells(24, 3) - Worksheets("Busi_Find").Cells(16, 3)) / 360), 10)
+    Worksheets("Busi_Find").Cells(25, 6) = Application.WorksheetFunction.Round((Worksheets("Busi_Find").Range("F10") - Worksheets("Busi_Find").Cells(25, 5) * (Worksheets("Busi_Find").Cells(19, 3) - Worksheets("Busi_Find").Range("C10")) * Worksheets("Busi_Find").Cells(19, 6) / 360) / (1 + Worksheets("Busi_Find").Cells(25, 5) * (Worksheets("Busi_Find").Cells(25, 3) - Worksheets("Busi_Find").Cells(19, 3)) / 360), 10)
+    
+    
+Worksheets("Busi_Find").Cells(25, 7) = Worksheets("Busi_Find").Range("F22") * (Worksheets("Busi_Find").Range("C22") - Worksheets("Busi_Find").Range("C10")) / 360
+Worksheets("Busi_Find").Cells(26, 6) = Application.WorksheetFunction.Round((Worksheets("Busi_Find").Range("F10") - Worksheets("Busi_Find").Range("E26") * Worksheets("Busi_Find").Cells(25, 7)) / (1 + Worksheets("Busi_Find").Range("E26") * (Worksheets("Busi_Find").Range("C26") - Worksheets("Busi_Find").Range("C22")) / 360), 10)     '2Y
+' <2Y는 세칙 별표의 Daycount와 다른 식 적용(분자의 시작일이 T+(1-1)Y가 아니고 T+2D+(1-1)Y가 되어야함?)>
+
+Worksheets("Busi_Find").Cells(26, 7) = Worksheets("Busi_Find").Range("F26") * (Worksheets("Busi_Find").Range("C26") - Worksheets("Busi_Find").Range("C22")) / 360
+
+   For DF_OIS = 27 To 74   '3년 이상
+        Worksheets("Busi_Find").Cells(DF_OIS, 6) = Application.WorksheetFunction.Round((Worksheets("Busi_Find").Range("F10") - Worksheets("Busi_Find").Cells(DF_OIS, 5) * Application.WorksheetFunction.Sum(Range(Worksheets("Busi_Find").Cells(25, 7), Worksheets("Busi_Find").Cells(DF_OIS - 1, 7)))) / (1 + Worksheets("Busi_Find").Cells(DF_OIS, 5) * (Worksheets("Busi_Find").Cells(DF_OIS, 3) - Worksheets("Busi_Find").Cells(DF_OIS - 1, 3)) / 360), 10)
+        Worksheets("Busi_Find").Cells(DF_OIS, 7) = Worksheets("Busi_Find").Cells(DF_OIS, 6) * (Worksheets("Busi_Find").Cells(DF_OIS, 3) - Worksheets("Busi_Find").Cells(DF_OIS - 1, 3)) / 360
+    Next DF_OIS
+             
+   Worksheets("Busi_Find").Range("G8").ColumnWidth = 0.2
+'''''**** DF가 시스템과 생각보다 차이남(소수점 9~10자리)
+
+'ZCR
+
+    For M_raw = 9 To 74
+      Worksheets("Busi_Find").Cells(M_raw, 8) = Application.WorksheetFunction.Round(-Application.WorksheetFunction.Ln(Worksheets("Busi_Find").Cells(M_raw, 6)) * 365 / (Worksheets("Busi_Find").Cells(M_raw, 3) - Worksheets("Busi_Find").Range("C2")), 10)
+    Next M_raw
+    
+    
+'<<<<<<<<3M IRS>>>>>>>>
+
+     Worksheets("Busi_Find").Columns(12).NumberFormat = "#,##0.0000000000"
+     Worksheets("Busi_Find").Columns(15).NumberFormat = "#,##0.0000000000"
+     Worksheets("Busi_Find").Columns(18).NumberFormat = "#,##0.0000000000"
+     
+     Worksheets("Busi_Find").Range("L9") = Worksheets("Rate").Range("I4")
+     
+        For M_raw = 10 To 208
+          For Prm_Ten = 1 To 36
+           If Worksheets("Rate").Cells(3, 4 + Prm_Ten) = Worksheets("Busi_Find").Cells(M_raw, 10) Then
+            Worksheets("Busi_Find").Cells(M_raw, 12) = Worksheets("Rate").Cells(6, 4 + Prm_Ten)
+           End If
+          Next Prm_Ten
+        Next M_raw
+        
+        For M_raw = 10 To 208
+         If Worksheets("Busi_Find").Cells(M_raw, 12) = "-" Then
+            Worksheets("Busi_Find").Cells(M_raw, 12) = ""
+         End If
+        Next M_raw
+        
+    Worksheets("Busi_Find").Range("L8").ColumnWidth = 0.2
+    Worksheets("Busi_Find").Range("L9:L208").Copy Destination:=Worksheets("Busi_Find").Range("M9")
+    Worksheets("Busi_Find").Range("M8").Value = "Rate"
+    Worksheets("Busi_Find").Range("M9:M208").SpecialCells(xlCellTypeConstants).Font.Color = RGB(200, 0, 200)
+    
+
+    For N_Blank = 9 To 208
+        If Worksheets("Busi_Find").Cells(N_Blank, 13) = "" Then
+            Worksheets("Busi_Find").Cells(N_Blank, 13) = Round(Worksheets("Busi_Find").Cells(N_Blank, 12).End(xlUp) + (Worksheets("Busi_Find").Cells(N_Blank, 12).End(xlDown) _
+            - Worksheets("Busi_Find").Cells(N_Blank, 12).End(xlUp)) * (Worksheets("Busi_Find").Cells(N_Blank, 11) - Worksheets("Busi_Find").Cells(N_Blank, 12).End(xlUp).Offset(0, -1)) / _
+            (Worksheets("Busi_Find").Cells(N_Blank, 12).End(xlDown).Offset(0, -1) - Worksheets("Busi_Find").Cells(N_Blank, 12).End(xlUp).Offset(0, -1)), 10)
+        End If
+    Next N_Blank
+
+
+'3M FWD 위한 해당일의 DF 계산 <검증완료>
+        For M_raw = 9 To 208
+          For N_Blank = 9 To 74
+           If Worksheets("Busi_Find").Cells(N_Blank, 3) = Worksheets("Busi_Find").Cells(M_raw, 11) Then
+             Worksheets("Busi_Find").Cells(M_raw, 17) = Worksheets("Busi_Find").Cells(N_Blank, 6)
+           End If
+        Next N_Blank
+      Next M_raw
+    
+      For M_raw = 9 To 208
+          For N_Blank = 9 To 74
+        If Worksheets("Busi_Find").Cells(M_raw, 17) = "" And Worksheets("Busi_Find").Cells(N_Blank, 3) < Worksheets("Busi_Find").Cells(M_raw, 11) And Worksheets("Busi_Find").Cells(N_Blank + 1, 3) > Worksheets("Busi_Find").Cells(M_raw, 11) Then
+              Worksheets("Busi_Find").Cells(M_raw, 17) = Application.WorksheetFunction.Round((1 / Exp((Worksheets("Busi_Find").Cells(M_raw, 11) - Worksheets("Busi_Find").Range("C2")) / 365 * _
+              (Worksheets("Busi_Find").Cells(N_Blank, 8) + (Worksheets("Busi_Find").Cells(N_Blank + 1, 8) - Worksheets("Busi_Find").Cells(N_Blank, 8)) * (Worksheets("Busi_Find").Cells(M_raw, 11) - Worksheets("Busi_Find").Cells(N_Blank, 3)) / _
+              (Worksheets("Busi_Find").Cells(N_Blank + 1, 3) - Worksheets("Busi_Find").Cells(N_Blank, 3))))), 10)
+        End If
+          Next N_Blank
+      Next M_raw
+      
+'3M FWD 위한 윗시그마의 Daycount*DF 미리 계산
+Worksheets("Busi_Find").Cells(9, 19) = Worksheets("Busi_Find").Cells(9, 17) * (Worksheets("Busi_Find").Cells(9, 11) - Worksheets("Busi_Find").Range("K6")) / 360    's열
+Worksheets("Busi_Find").Cells(10, 19) = Worksheets("Busi_Find").Cells(10, 17) * (Worksheets("Busi_Find").Cells(10, 11) - Worksheets("Busi_Find").Range("K6")) / 360
+Worksheets("Busi_Find").Cells(11, 19) = Worksheets("Busi_Find").Cells(11, 17) * (Worksheets("Busi_Find").Cells(11, 11) - Worksheets("Busi_Find").Range("K6")) / 360
+Worksheets("Busi_Find").Cells(12, 19) = Worksheets("Busi_Find").Cells(12, 17) * (Worksheets("Busi_Find").Cells(12, 11) - Worksheets("Busi_Find").Range("K6")) / 360
+
+      For M_raw = 13 To 208
+         Worksheets("Busi_Find").Cells(M_raw, 19) = Worksheets("Busi_Find").Cells(M_raw, 17) * (Worksheets("Busi_Find").Cells(M_raw, 11) - Worksheets("Busi_Find").Cells(M_raw - 4, 11)) / 360
+      Next M_raw
+      
+Dim Mqt_raw As Integer, Mqt_raw2 As Integer
+    For Mqt_raw = 1 To 50
+        For Mqt_raw2 = 1 To 50
+            If Mqt_raw2 <= Mqt_raw Then         '윗시그마 미리 계산
+                Worksheets("Busi_Find").Cells(Mqt_raw * 4 + 5, 20) = Worksheets("Busi_Find").Cells(Mqt_raw * 4 + 5, 20) + Worksheets("Busi_Find").Cells(Mqt_raw2 * 4 + 5, 19)
+                Worksheets("Busi_Find").Cells(Mqt_raw * 4 + 6, 20) = Worksheets("Busi_Find").Cells(Mqt_raw * 4 + 6, 20) + Worksheets("Busi_Find").Cells(Mqt_raw2 * 4 + 6, 19)
+                Worksheets("Busi_Find").Cells(Mqt_raw * 4 + 7, 20) = Worksheets("Busi_Find").Cells(Mqt_raw * 4 + 7, 20) + Worksheets("Busi_Find").Cells(Mqt_raw2 * 4 + 7, 19)
+                Worksheets("Busi_Find").Cells(Mqt_raw * 4 + 8, 20) = Worksheets("Busi_Find").Cells(Mqt_raw * 4 + 8, 20) + Worksheets("Busi_Find").Cells(Mqt_raw2 * 4 + 8, 19)
+            End If
+        Next Mqt_raw2
+    Next Mqt_raw
+
+
+''''<<<<<6M IRS>>>>>>>
+
+     Worksheets("Busi_Find").Columns(24).NumberFormat = "#,##0.0000000000"
+     
+     Worksheets("Busi_Find").Range("X9") = Worksheets("Rate").Range("L4")
+     
+        For M_raw = 10 To 108
+          For Prm_Ten = 1 To 36
+           If Worksheets("Rate").Cells(3, 4 + Prm_Ten) = Worksheets("Busi_Find").Cells(M_raw, 22) Then
+            Worksheets("Busi_Find").Cells(M_raw, 24) = Worksheets("Rate").Cells(7, 4 + Prm_Ten)
+           End If
+          Next Prm_Ten
+        Next M_raw
+        
+        For M_raw = 10 To 108
+         If Worksheets("Busi_Find").Cells(M_raw, 24) = "-" Then
+            Worksheets("Busi_Find").Cells(M_raw, 24) = ""
+         End If
+        Next M_raw
+        
+    Worksheets("Busi_Find").Range("X8").ColumnWidth = 0.2
+    Worksheets("Busi_Find").Range("X9:X108").Copy Destination:=Worksheets("Busi_Find").Range("Y9")
+    Worksheets("Busi_Find").Range("Y8").Value = "Rate"
+    Worksheets("Busi_Find").Range("Y9:Y108").SpecialCells(xlCellTypeConstants).Font.Color = RGB(200, 0, 200)
+    
+
+    For N_Blank = 9 To 68
+        If Worksheets("Busi_Find").Cells(N_Blank, 25) = "" Then
+            Worksheets("Busi_Find").Cells(N_Blank, 25) = Round(Worksheets("Busi_Find").Cells(N_Blank, 24).End(xlUp) + (Worksheets("Busi_Find").Cells(N_Blank, 24).End(xlDown) _
+            - Worksheets("Busi_Find").Cells(N_Blank, 24).End(xlUp)) * (Worksheets("Busi_Find").Cells(N_Blank, 23) - Worksheets("Busi_Find").Cells(N_Blank, 24).End(xlUp).Offset(0, -1)) / _
+            (Worksheets("Busi_Find").Cells(N_Blank, 24).End(xlDown).Offset(0, -1) - Worksheets("Busi_Find").Cells(N_Blank, 24).End(xlUp).Offset(0, -1)), 10)
+        End If
+    Next N_Blank
+    
+    For N_Blank = 69 To 108
+        Worksheets("Busi_Find").Cells(N_Blank, 25) = Worksheets("Busi_Find").Range("Y68")
+    Next N_Blank
+    
+
+              
+'3개월 단위 FWD 산출  --->>>>무이표금리 확인 결과 차이 많이 남
+      Worksheets("Busi_Find").Range("O9") = Worksheets("Busi_Find").Range("M9")   '3M
+      Worksheets("Busi_Find").Range("P9") = Worksheets("Busi_Find").Range("O9") * (Worksheets("Busi_Find").Range("K9") - Worksheets("Busi_Find").Range("K6")) * Worksheets("Busi_Find").Range("Q9") / 360
+      
+      Worksheets("Busi_Find").Range("O10") = Application.WorksheetFunction.Round((Worksheets("Busi_Find").Range("M10") * (Worksheets("Busi_Find").Range("K10") - Worksheets("Busi_Find").Range("K6")) * Worksheets("Busi_Find").Range("Q10") / 360 - Worksheets("Busi_Find").Range("P9")) / Worksheets("Busi_Find").Range("Q10") / (Worksheets("Busi_Find").Range("K10") - Worksheets("Busi_Find").Range("K9")) * 360, 10)
+      Worksheets("Busi_Find").Range("P10") = Worksheets("Busi_Find").Range("O10") * (Worksheets("Busi_Find").Range("K10") - Worksheets("Busi_Find").Range("K9")) / 360 * Worksheets("Busi_Find").Range("Q10")   '6M
+      
+      Worksheets("Busi_Find").Range("O11") = Application.WorksheetFunction.Round((Worksheets("Busi_Find").Range("M11") * (Worksheets("Busi_Find").Range("K11") - Worksheets("Busi_Find").Range("K6")) / 360 * Worksheets("Busi_Find").Range("Q11") - Worksheets("Busi_Find").Range("P9") - Worksheets("Busi_Find").Range("P10")) / Worksheets("Busi_Find").Range("Q11") / (Worksheets("Busi_Find").Range("K11") - Worksheets("Busi_Find").Range("K10")) * 360, 10)
+      Worksheets("Busi_Find").Range("P11") = Worksheets("Busi_Find").Range("O11") * (Worksheets("Busi_Find").Range("K11") - Worksheets("Busi_Find").Range("K10")) / 360 * Worksheets("Busi_Find").Range("Q11")   '9M
+            
+      Worksheets("Busi_Find").Range("O12") = Application.WorksheetFunction.Round((Worksheets("Busi_Find").Range("M12") * (Worksheets("Busi_Find").Range("K12") - Worksheets("Busi_Find").Range("K6")) / 360 * Worksheets("Busi_Find").Range("Q12") - Worksheets("Busi_Find").Range("P9") - Worksheets("Busi_Find").Range("P10") - Worksheets("Busi_Find").Range("P11")) / Worksheets("Busi_Find").Range("Q12") / (Worksheets("Busi_Find").Range("K12") - Worksheets("Busi_Find").Range("K11")) * 360, 10)
+      Worksheets("Busi_Find").Range("P12") = Worksheets("Busi_Find").Range("O12") * (Worksheets("Busi_Find").Range("K12") - Worksheets("Busi_Find").Range("K11")) / 360 * Worksheets("Busi_Find").Range("Q12")   '12M
+                                                                              
+Dim DF_3NM As Integer
+    For DF_3NM = 13 To 207  '원래 208
+        Worksheets("Busi_Find").Cells(DF_3NM, 15) = (Worksheets("Busi_Find").Cells(DF_3NM, 13) * Worksheets("Busi_Find").Cells(DF_3NM, 20) - Application.WorksheetFunction.Sum(Range(Worksheets("Busi_Find").Cells(9, 16), Worksheets("Busi_Find").Cells(DF_3NM - 1, 16)))) * 360 / Worksheets("Busi_Find").Cells(DF_3NM, 17) / (Worksheets("Busi_Find").Cells(DF_3NM, 11) - Worksheets("Busi_Find").Cells(DF_3NM - 1, 11))
+        Worksheets("Busi_Find").Cells(DF_3NM, 16) = Worksheets("Busi_Find").Cells(DF_3NM, 15) * (Worksheets("Busi_Find").Cells(DF_3NM, 11) - Worksheets("Busi_Find").Cells(DF_3NM - 1, 11)) / 360 * Worksheets("Busi_Find").Cells(DF_3NM, 17)
+    Next DF_3NM
+       
+'3M ZCR     >>>>>>>오늘까지의 ZCR구하기 -> 오늘부터 effective date 까지도 LIBOR로 하는게 맞는가 확인 &&&&&&&&%%%%$$$$$$ 원래 c2 두개를 k6으로 했었음-zero rate이 아니긴함
+        Worksheets("Busi_Find").Range("R9") = Worksheets("Busi_Find").Range("O9")
+    For DF_3NM = 10 To 207  '원래 208
+        Worksheets("Busi_Find").Cells(DF_3NM, 18) = Application.WorksheetFunction.Round(((1 + Worksheets("Busi_Find").Cells(DF_3NM - 1, 18) * (Worksheets("Busi_Find").Cells(DF_3NM - 1, 11) - Worksheets("Busi_Find").Range("c2")) / 360) * (1 + Worksheets("Busi_Find").Cells(DF_3NM, 15) * (Worksheets("Busi_Find").Cells(DF_3NM, 11) - Worksheets("Busi_Find").Cells(DF_3NM - 1, 11)) / 360) - 1) * 360 / (Worksheets("Busi_Find").Cells(DF_3NM, 11) - Worksheets("Busi_Find").Range("C2")), 10)
+    Next DF_3NM
+        
+             
+Worksheets("Busi_Find").Range("P8").ColumnWidth = 0.2
+Worksheets("Busi_Find").Range("s8").ColumnWidth = 0.2
+Worksheets("Busi_Find").Range("t8").ColumnWidth = 0.2
+             
+
+Worksheets("Busi_Find").Columns(25).NumberFormat = "#,##0.0000000000"
+Worksheets("Busi_Find").Columns(27).NumberFormat = "#,##0.0000000000"
+Worksheets("Busi_Find").Columns(30).NumberFormat = "#,##0.0000000000"
+Worksheets("Busi_Find").Range("U8").ColumnWidth = 0.2
+Worksheets("Busi_Find").Range("X8").ColumnWidth = 0.2
+Worksheets("Busi_Find").Range("z8").ColumnWidth = 0.2
+Worksheets("Busi_Find").Range("AB8").ColumnWidth = 0.2
+
+'6M DF 가져오기
+
+For M_raw = 9 To 108
+    Worksheets("Busi_Find").Cells(M_raw, 29) = Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Cells(M_raw, 22), Worksheets("Busi_Find").Range("J8").CurrentRegion, 8)
+Next M_raw
+
+'윗시그마 중 D(,)*DF
+Dim FWD_3NM As Integer
+    Worksheets("Busi_Find").Cells(9, 21) = (Worksheets("Busi_Find").Range("K9") - Worksheets("Busi_Find").Range("K6")) / 360 * Worksheets("Busi_Find").Cells(9, 17)
+    For FWD_3NM = 10 To 208
+        Worksheets("Busi_Find").Cells(FWD_3NM, 21) = (Worksheets("Busi_Find").Cells(FWD_3NM, 11) - Worksheets("Busi_Find").Cells(FWD_3NM - 1, 11)) / 360 * Worksheets("Busi_Find").Cells(FWD_3NM, 17)
+    Next FWD_3NM
+     
+Dim M_raw2 As Integer
+    For M_raw = 9 To 108
+        For M_raw2 = 9 To 208
+            If Worksheets("Busi_Find").Cells(M_raw2, 10) <= Worksheets("Busi_Find").Cells(M_raw, 22) Then
+              Worksheets("Busi_Find").Cells(M_raw, 26) = Worksheets("Busi_Find").Cells(M_raw, 26) + Worksheets("Busi_Find").Cells(M_raw2, 21) * (Worksheets("Busi_Find").Cells(M_raw2, 15) + Worksheets("Busi_Find").Cells(M_raw, 25))
+            End If
+        Next M_raw2
+    Next M_raw
+
+'6M FWD
+Worksheets("Busi_Find").Range("AA9") = Worksheets("Busi_Find").Range("X9")
+Worksheets("Busi_Find").Range("AB9") = Worksheets("Busi_Find").Range("AA9") * (Worksheets("Busi_Find").Range("W9") - Worksheets("Busi_Find").Range("W6")) / 360 * Worksheets("Busi_Find").Range("AC9")
+
+    For M_raw = 10 To 107 '원래 108
+        Worksheets("Busi_Find").Cells(M_raw, 27) = Application.WorksheetFunction.Round((Cells(M_raw, 26) - Application.WorksheetFunction.Sum(Range(Worksheets("Busi_Find").Cells(9, 28), Worksheets("Busi_Find").Cells(M_raw - 1, 28)))) * 360 / (Worksheets("Busi_Find").Cells(M_raw, 23) - Worksheets("Busi_Find").Cells(M_raw - 1, 23)) / Worksheets("Busi_Find").Cells(M_raw, 29), 10)
+        Worksheets("Busi_Find").Cells(M_raw, 28) = Worksheets("Busi_Find").Cells(M_raw, 27) * (Worksheets("Busi_Find").Cells(M_raw, 23) - Worksheets("Busi_Find").Cells(M_raw - 1, 23)) / 360 * Worksheets("Busi_Find").Cells(M_raw, 29)
+    Next M_raw
+    
+
+'6M ZCR     3M과 같은 문제 w6대신 c2 교체하였음
+Worksheets("Busi_Find").Range("AD9") = Worksheets("Busi_Find").Range("X9")
+
+    For M_raw = 10 To 107 '원래108
+        Worksheets("Busi_Find").Cells(M_raw, 30) = Application.WorksheetFunction.Round(((1 + Worksheets("Busi_Find").Cells(M_raw - 1, 30) * (Worksheets("Busi_Find").Cells(M_raw - 1, 23) - Worksheets("Busi_Find").Range("C2")) / 360) * (1 + Worksheets("Busi_Find").Cells(M_raw, 27) * _
+        (Worksheets("Busi_Find").Cells(M_raw, 23) - Worksheets("Busi_Find").Cells(M_raw - 1, 23)) / 360) - 1) * 360 / (Worksheets("Busi_Find").Cells(M_raw, 23) - Worksheets("Busi_Find").Range("C2")), 10)
+    Next M_raw
+
+    For M_raw = 9 To 107 '원래108
+            Worksheets("Busi_Find").Cells(M_raw, 31) = Application.WorksheetFunction.VLookup(Worksheets("Busi_Find").Cells(M_raw, 23), Range(Worksheets("Busi_Find").Cells(9, 11), Worksheets("Busi_Find").Cells(208, 14)), 4)
+    Next M_raw
+    
+End Sub
+Sub Del_BusiFind()  '내용 지우기
+Workbooks("USD multi NPV.xlsm").Worksheets("Busi_Find").Range(Worksheets("Busi_Find").Cells(9, 3), Worksheets("Busi_Find").Cells(208, 31)).ClearContents
+With Worksheets("Busi_Find")
+    .Range("C2").ClearContents
+    .Rows(5).ClearContents
+    .Rows(6).ClearContents
+End With
+
+End Sub
+'거래정보 요구
+Sub Multi_NPVCal()
+Application.DisplayAlerts = False
+   Dim Trade_N, Multi_NPV, Cal_Num, L_L As Integer
+    
+'Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(1, 5).Value = "MASTER"
+'Cal_Num = Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Range("A1").CurrentRegion.Rows.Count
+
+'For L_L = 2 To Cal_Num
+'      If Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 2) = "g" And Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 3) = "g" And _
+'      Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 4) = "g" Then
+'            Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 5).Value = "g"
+'      Else
+'        Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 5).Value = "w"
+'      End If
+'Next L_L
+     
+     
+Worksheets("Cash Flow").Range("H3") = Worksheets("Busi_Find").Range("C2") + 1       '산출기준일 찾기-영업일 기준이 무엇인가? 이하 SeB만 고려
+   Do Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("H3"), Worksheets("Cal").Range("A1").CurrentRegion, 4) = "g"
+            Worksheets("Cash Flow").Range("H3") = Worksheets("Cash Flow").Range("H3") + 1
+   Loop
+    
+    
+Trade_N = Worksheets("Trade Info").Range("A1").CurrentRegion.Rows.Count - 1
+  
+  
+For Multi_NPV = 1 To Trade_N  '''마무리->for 문
+  If Worksheets("Trade Info").Cells(Multi_NPV + 1, 4) > Worksheets("Cash Flow").Range("H3") Then
+    Worksheets("Cash Flow").Range("C3") = Worksheets("Trade Info").Cells(Multi_NPV + 1, 3)
+    Worksheets("Cash Flow").Range("C4") = (Left(Worksheets("Trade Info").Cells(Multi_NPV + 1, 4), 4) - _
+                                           Left(Worksheets("Trade Info").Cells(Multi_NPV + 1, 3), 4)) * 12 + _
+                                           Mid(Worksheets("Trade Info").Cells(Multi_NPV + 1, 4), 6, 2) - _
+                                           Mid(Worksheets("Trade Info").Cells(Multi_NPV + 1, 3), 6, 2)
+    Worksheets("Cash Flow").Range("C5") = Worksheets("Trade Info").Cells(Multi_NPV + 1, 15)
+    Worksheets("Cash Flow").Range("C6") = Worksheets("Trade Info").Cells(Multi_NPV + 1, 18)
+    Worksheets("Cash Flow").Range("C7") = Worksheets("Trade Info").Cells(Multi_NPV + 1, 24)
+
+    Worksheets("Cash Flow").Range("E3") = Left(Worksheets("Trade Info").Cells(Multi_NPV + 1, 20), 1) * (-1.2) + 13.2
+    Worksheets("Cash Flow").Range("E4") = Left(Worksheets("Trade Info").Cells(Multi_NPV + 1, 23), 1)
+    Worksheets("Cash Flow").Range("E5") = Worksheets("Trade Info").Cells(Multi_NPV + 1, 19)
+    Worksheets("Cash Flow").Range("E6") = Worksheets("Trade Info").Cells(Multi_NPV + 1, 22)
+      
+'     Dim Buis_LnB As String, Buis_SeB As String
+'
+'       Buis_LnB = Application.InputBox("영업일 기준지 LnB?", Default:="True or False", Type:=4)
+'     If Buis_LnB = True Then
+'     Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow").Range("G4").Value = "Y"
+'     Else
+'       Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow").Range("G4").Value = "N"
+'     End If
+     
+'       Buis_SeB = Application.InputBox("영업일 기준지 SeB?", Default:="True or False", Type:=4)
+'     If Buis_SeB = True Then
+'     Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow").Range("G5").Value = "Y"
+'      Else
+'       Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow").Range("G5").Value = "N"
+'     End If
+
+'영업일 기준지역 일단 미고려
+Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow").Range("G4").Value = "Y"
+Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow").Range("G5").Value = "Y"
+
+'Dim Cal_Num As Integer, L_L As Integer   '영업일 기준지역 옵션에 따른 영업일 산출
+' If Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow").Range("G4").Value = "Y" And Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow"). _
+'   Range("G5").Value = "Y" Then
+'     For L_L = 2 To Cal_Num
+'      If Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 2) = "g" And Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 3) = "g" And _
+'      Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 4) = "g" Then
+'            Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 5).Value = "g"
+'      Else
+'        Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 5).Value = "w"
+'      End If
+'     Next L_L
+'   ElseIf Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow").Range("G4").Value = "Y" And Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow"). _
+'   Range("G5").Value = "N" Then
+'     For L_L = 2 To Cal_Num
+'      If Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 2) = "g" And Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 3) = "g" Then
+'            Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 5).Value = "g"
+'      Else
+'        Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 5).Value = "w"
+'      End If
+'     Next L_L
+'   ElseIf Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow").Range("G4").Value = "N" And Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow"). _
+'   Range("G5").Value = "Y" Then
+'     For L_L = 2 To Cal_Num
+'      If Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 3) = "g" And Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 4) = "g" Then
+'            Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 5).Value = "g"
+'      Else
+'        Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 5).Value = "w"
+'      End If
+'     Next L_L
+'   ElseIf Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow").Range("G4").Value = "N" And Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow"). _
+'   Range("G5").Value = "N" Then
+'     For L_L = 2 To Cal_Num
+'      If Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 3) = "g" Then
+'            Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 5).Value = "g"
+'      Else
+'        Workbooks("USD multi NPV.xlsm").Worksheets("Cal").Cells(L_L, 5).Value = "w"
+'      End If
+'     Next L_L
+'  End If
+   
+   
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+With Worksheets("Cash Flow")
+    .Range("A10") = "직전 주요만기(OIS)"
+    .Range("B10") = "직후 주요만기(OIS)"
+    .Range("c10") = "이자교환일"
+    .Range("d10") = "ZCR(DF)"
+    .Range("e10") = "DF"
+End With
+
+
+    Dim CF_N As Integer
+      If Worksheets("Cash Flow").Range("C7") = "Y" Then
+
+        For CF_N = 3 To Worksheets("Cash Flow").Range("C4") Step 3
+                Worksheets("Cash Flow").Cells(CF_N / 3 + 10, 3) = Application.WorksheetFunction.EoMonth(Worksheets("Cash Flow").Range("C3").Value, CF_N)
+                Do Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(CF_N / 3 + 10, 3), Worksheets("Cal").Range("A1").CurrentRegion, 5) = "g"
+                    Worksheets("Cash Flow").Cells(CF_N / 3 + 10, 3) = Worksheets("Cash Flow").Cells(CF_N / 3 + 10, 3) - 1
+                Loop
+        Next CF_N
+
+      Else
+        For CF_N = 3 To Worksheets("Cash Flow").Range("C4") Step 3
+             Worksheets("Cash Flow").Cells(CF_N / 3 + 10, 3) = Application.WorksheetFunction.EDate(Worksheets("Cash Flow").Range("C3"), CF_N)
+        Next CF_N
+    End If
+         
+                               
+      If Worksheets("Cash Flow").Range("C7") = "N" Then
+
+        For CF_N = 3 To Worksheets("Cash Flow").Range("C4") Step 3     'Following
+          
+            Do Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(CF_N / 3 + 10, 3), Worksheets("Cal").Range("A1").CurrentRegion, 5) = "g"
+                Worksheets("Cash Flow").Cells(CF_N / 3 + 10, 3) = Worksheets("Cash Flow").Cells(CF_N / 3 + 10, 3) + 1
+            Loop
+        Next CF_N
+
+    
+        For CF_N = 3 To Worksheets("Cash Flow").Range("C4") Step 3      'Preceding
+            If (Month(Worksheets("Cash Flow").Cells(CF_N / 3 + 10, 3)) - Month(Worksheets("Cash Flow").Cells(3, 3))) Mod 3 <> 0 Then
+             Do
+                Worksheets("Cash Flow").Cells(CF_N / 3 + 10, 3) = Worksheets("Cash Flow").Cells(CF_N / 3 + 10, 3) - 1
+             Loop Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(CF_N / 3 + 10, 3), Worksheets("Cal").Range("A1").CurrentRegion, 5) = "g"
+            End If
+        Next CF_N
+          
+      End If
+
+
+'일별 ZCR(DF)
+
+  Worksheets("Cash Flow").Range("C9") = Worksheets("Cash Flow").Range("H3") + 1       '산출일 익익영업일 찾기
+    Do Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("C9"), Worksheets("Cal").Range("A1").CurrentRegion, 4) = "g"
+            Worksheets("Cash Flow").Range("C9") = Worksheets("Cash Flow").Range("C9") + 1
+    Loop
+    
+Dim Day_Int As Integer, Day_Num As Integer, Close_3NM As Integer, PP As Integer
+
+        Day_Num = Worksheets("Cash Flow").Range("C4") / 3
+    For PP = 11 To (10 + Day_Num)    '직전/직후 주요만기 찾기
+     If Worksheets("Cash Flow").Cells(PP, 3) >= Worksheets("Cash Flow").Range("C9") Then
+          For Close_3NM = 9 To 74    'NYB만 기준
+           If Worksheets("Busi_Find").Cells(Close_3NM, 3) - Worksheets("Cash Flow").Cells(PP, 3) <= 0 And Worksheets("Busi_Find").Cells(Close_3NM + 1, 3) - Worksheets("Cash Flow").Cells(PP, 3) > 0 Then
+                Worksheets("Cash Flow").Cells(PP, 1) = Worksheets("Busi_Find").Cells(Close_3NM, 3)
+                Worksheets("Cash Flow").Cells(PP, 2) = Worksheets("Busi_Find").Cells(Close_3NM + 1, 3)
+          End If
+        Next Close_3NM
+     End If
+    Next PP
+           
+        For Day_Int = 1 To Day_Num
+          If Worksheets("Cash Flow").Cells(Day_Int + 10, 3) - Worksheets("Cash Flow").Range("C9") >= 0 Then
+               Worksheets("Cash Flow").Cells(Day_Int + 10, 4) = Application.WorksheetFunction.Round(Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(Day_Int + 10, 1), Worksheets("Busi_Find").Range("C9:H74"), 6, False) + _
+              (Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(Day_Int + 10, 2), Worksheets("Busi_Find").Range("C9:H74"), 6, False) _
+              - Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(Day_Int + 10, 1), Worksheets("Busi_Find").Range("C9:H74"), 6, False)) _
+             * (Worksheets("Cash Flow").Cells(Day_Int + 10, 3) - Worksheets("Cash Flow").Cells(Day_Int + 10, 1)) / (Worksheets("Cash Flow").Cells(Day_Int + 10, 2) - Worksheets("Cash Flow").Cells(Day_Int + 10, 1)), 10)
+           Else: Worksheets("Cash Flow").Cells(Day_Int + 10, 4) = "-"
+         End If
+      Next Day_Int
+
+   Dim D_N As Integer
+        For D_N = 1 To Worksheets("Cash Flow").Range("C4") / 3
+            If Worksheets("Cash Flow").Cells(10 + D_N, 4) <> "-" Then
+            Worksheets("Cash Flow").Cells(10 + D_N, 5) = Application.WorksheetFunction.Round(Exp(-Worksheets("Cash Flow").Cells(10 + D_N, 4) * (Worksheets("Cash Flow"). _
+            Cells(10 + D_N, 3) - Worksheets("Busi_Find").Range("C2")) / 365) / Worksheets("Busi_Find").Range("F10"), 10)
+              Else: Worksheets("Cash Flow").Cells(10 + D_N, 5) = ""
+            End If
+           Next D_N
+        
+        
+        
+        
+''''''''''''''''''''''''''''''''''''''''''''''
+ 'T1인 경우   'Worksheets("Busi_Find").Range ("F9"), 10'
+ 'T2인 경우   'Worksheets("Busi_Find").Range ("F10"), 10'
+''''''''''''''''''''''''''''''''''''''''''''''
+
+
+
+
+
+
+        
+'text 변환
+    For D_N = 1 To Worksheets("Cash Flow").Range("C4") / 3
+     Worksheets("Cash Flow").Cells(10 + D_N, 16) = Application.WorksheetFunction.Text(Worksheets("Cash Flow").Cells(10 + D_N, 3), "YYYYMMDD")
+    Next D_N
+     Worksheets("Cash Flow").Cells(10, 16) = Application.WorksheetFunction.Text(Worksheets("Cash Flow").Range("C3"), "YYYYMMDD")
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'고정금리찾기
+    Dim R_N As Integer
+      If Worksheets("Cash Flow").Range("E3") = 12 Then
+        For R_N = 4 To Worksheets("Cash Flow").Range("C4") / 3 Step 4
+            If Worksheets("Cash Flow").Cells(10 + R_N, 5) <> "" Then
+            Worksheets("Cash Flow").Cells(10 + R_N, 6) = Worksheets("Cash Flow").Range("C6") / 100
+             Else: Worksheets("Cash Flow").Cells(10 + R_N, 6) = ""
+            End If
+        Next R_N
+      ElseIf Worksheets("Cash Flow").Range("E3") = 6 Then
+        For R_N = 2 To Worksheets("Cash Flow").Range("C4") / 3 Step 2
+            If Worksheets("Cash Flow").Cells(10 + R_N, 5) <> "" Then
+            Worksheets("Cash Flow").Cells(10 + R_N, 6) = Worksheets("Cash Flow").Range("C6") / 100
+             Else: Worksheets("Cash Flow").Cells(10 + R_N, 6) = ""
+            End If
+        Next R_N
+     End If
+
+'30/360용 D2예외 체크----->검증필요
+    For R_N = 2 To Worksheets("Cash Flow").Range("C4") / 3
+        If Worksheets("Cash Flow").Cells(10 + R_N, 6) <> "" And Right(Worksheets("Cash Flow").Cells(10 + R_N, 16), 2) = 31 And Right(Worksheets("Cash Flow").Cells(8 + R_N, 16), 2) > 29 Then
+        Worksheets("Cash Flow").Cells(10 + R_N, 17) = 1
+        End If
+    Next R_N
+    For R_N = 4 To Worksheets("Cash Flow").Range("C4") / 3
+        If Worksheets("Cash Flow").Cells(10 + R_N, 6) <> "" And _
+           Right(Worksheets("Cash Flow").Cells(10 + R_N, 16), 2) = 31 And _
+           Right(Worksheets("Cash Flow").Cells(6 + R_N, 16), 2) > 29 Then
+        Worksheets("Cash Flow").Cells(10 + R_N, 18) = 1
+        End If
+    Next R_N
+
+'------------------------------------------------------------------
+'변동금리 찾기(지급주기 3M 및 6M)
+Dim Last_Day As Date, Last_Index As Integer, First_Fix As Date, Nth_Fix1 As Integer, Nth_Fix2 As Integer
+
+If Worksheets("Cash Flow").Range("e4") = 6 Then
+
+
+    Day_Num = Worksheets("Cash Flow").Range("C4") / 3
+    For PP = 12 To (11 + Day_Num) Step 2    '직전/후 주요만기 찾기
+        For Close_3NM = 9 To 108
+           If Worksheets("Busi_Find").Cells(Close_3NM, 23) - Worksheets("Cash Flow").Cells(PP, 3) <= 0 And Worksheets("Busi_Find").Cells(Close_3NM + 1, 23) - _
+              Worksheets("Cash Flow").Cells(PP, 3) > 0 Then
+                Worksheets("Cash Flow").Cells(PP, 7) = Worksheets("Busi_Find").Cells(Close_3NM, 23)
+                Worksheets("Cash Flow").Cells(PP, 19) = Worksheets("Busi_Find").Cells(Close_3NM + 1, 23)
+          End If
+        Next Close_3NM
+    Next PP
+        
+        Last_Day = Worksheets("Cash Flow").Cells(Day_Num + 10, 7)
+        For Close_3NM = 9 To 108
+         If Worksheets("Busi_Find").Cells(Close_3NM, 23) = Last_Day Then
+            Worksheets("Cash Flow").Cells(Day_Num + 11, 7) = Worksheets("Busi_Find").Cells(Close_3NM + 1, 23)
+            End If
+        Next Close_3NM
+
+        
+        
+    For PP = 12 To (11 + Day_Num) Step 2       'ZCR(FWD) '21.12월 수정(busi_find는 런던/뉴욕기준 cash flow는 런던/뉴욕/서울기준 날짜 찍으므로 두 날짜사이에 두개의 이자지급일 가능 #재수정: 직후 만기 활용
+        If Worksheets("Cash Flow").Cells(PP, 7) <> 0 Then
+           Worksheets("Cash Flow").Cells(PP, 8) = Application.WorksheetFunction.Round(Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(PP, 7), Worksheets("Busi_Find").Range("W9:AD108"), 8, False) _
+                          + (Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(PP, 19), Worksheets("Busi_Find").Range("W9:AD108"), 8, False) _
+                          - Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(PP, 7), Worksheets("Busi_Find").Range("W9:AD108"), 8, False)) _
+                          * (Worksheets("Cash Flow").Cells(PP, 3) - Worksheets("Cash Flow").Cells(PP, 7)) / (Worksheets("Cash Flow").Cells(PP, 19) - Worksheets("Cash Flow").Cells(PP, 7)), 10)
+        Else: Worksheets("Cash Flow").Cells(PP, 8) = ""
+        End If
+    Next PP
+    
+    Worksheets("Cash Flow").Range("G10").End(xlDown).Offset(-2, 1).Value = Worksheets("Busi_Find").Range("Y9")
+    
+   For PP = 12 To (11 + Day_Num) Step 2 '21.12.30 추가
+     If Worksheets("Cash Flow").Cells(PP, 4) <> "-" Then
+        If Worksheets("Cash Flow").Cells(PP, 8) = "" Then
+          Worksheets("Cash Flow").Cells(PP, 8).Value = Worksheets("Cash Flow").Cells(PP + 2, 8)
+        End If
+   Exit For
+     End If
+   Next PP
+ 
+   '선도금리-------t일이 산출일임을 주의
+        For D_N = 4 To Worksheets("Cash Flow").Range("C4") / 3 Step 2
+            If Worksheets("Cash Flow").Cells(10 + D_N, 8) <> "" Then
+            Worksheets("Cash Flow").Cells(10 + D_N, 9) = 360 / (Worksheets("Cash Flow").Cells(10 + D_N, 3) - Worksheets("Cash Flow").Cells(8 + D_N, 3)) * ((1 + Worksheets("Cash Flow").Cells(10 + D_N, 8) * (Worksheets("Cash Flow").Cells(10 + D_N, 3) - Worksheets("Busi_Find").Range("c2")) / 360) / _
+            (1 + Worksheets("Cash Flow").Cells(8 + D_N, 8) * (Worksheets("Cash Flow").Cells(8 + D_N, 3) - Worksheets("Busi_Find").Range("c2")) / 360) - 1)
+              Else: Worksheets("Cash Flow").Cells(10 + D_N, 9) = ""
+            End If
+        Next D_N
+        
+     If Worksheets("Cash Flow").Range("H3") - Worksheets("Cash Flow").Range("C11") > 0 Then
+     For PP = 12 To (10 + Day_Num) Step 2 '21.12.30 추가
+      If Worksheets("Cash Flow").Cells(PP, 4) <> "-" Then
+        Worksheets("Cash Flow").Range("I9") = Worksheets("Cash Flow").Cells(PP - 2, 3) '첫번째 이자교환일 적용시 사용불가
+     Exit For
+      End If
+     Next PP
+      Do
+      Worksheets("Cash Flow").Range("I9") = Worksheets("Cash Flow").Range("I9") - 1
+      Loop Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I9"), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g"
+                  
+      Worksheets("Cash Flow").Range("I8") = Worksheets("Cash Flow").Range("I9")
+      Do
+      Worksheets("Cash Flow").Range("I8") = Worksheets("Cash Flow").Range("I8") - 1
+      Loop Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I8"), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g"
+      Do
+      Worksheets("Cash Flow").Range("I8") = Worksheets("Cash Flow").Range("I8") + 1
+      Loop Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I8"), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g"
+      
+      
+      For PP = 12 To (10 + Day_Num) Step 2 '21.12.30 추가
+      If Worksheets("Cash Flow").Cells(PP, 4) <> "-" Then
+        Worksheets("Cash Flow").Cells(PP, 9) = Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I8"), Workbooks("금리 파라미터.xlsx").Worksheets("USD Basis Swap").Range("A1").CurrentRegion, 2, False) / 100
+     Exit For
+      End If
+     Next PP
+       Else:
+      Worksheets("Cash Flow").Range("I8") = Workbooks("USD Multi NPV.xlsm").Worksheets("Trade Info").Cells(Multi_NPV + 1, 29)
+        Do Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I8"), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g"
+                  Worksheets("Cash Flow").Range("I8") = Worksheets("Cash Flow").Range("I8") - 1
+        Loop
+        Do
+        Worksheets("Cash Flow").Range("I8") = Worksheets("Cash Flow").Range("I8") + 1
+        Loop Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I8"), Worksheets("Cal").Range("A1").CurrentRegion, 4) = "g"
+        
+      Workbooks("USD Multi NPV.xlsm").Worksheets("Cash Flow").Range("I11").Select
+      Selection.Value = Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I8"), Workbooks("금리 파라미터.xlsx").Worksheets("USD IRS").Range("A1").CurrentRegion, 2) / 100
+    End If
+      
+ '-----------------------------------------------------------------
+ Else:
+
+    Day_Num = Worksheets("Cash Flow").Range("C4") / 3
+    For PP = 11 To (10 + Day_Num)    '직전/후 주요만기 찾기
+        For Close_3NM = 9 To 208
+           If Worksheets("Busi_Find").Cells(Close_3NM, 11) - Worksheets("Cash Flow").Cells(PP, 3) <= 0 And Worksheets("Busi_Find").Cells(Close_3NM + 1, 11) - _
+              Worksheets("Cash Flow").Cells(PP, 3) > 0 Then
+                Worksheets("Cash Flow").Cells(PP, 7) = Worksheets("Busi_Find").Cells(Close_3NM, 11)
+                Worksheets("Cash Flow").Cells(PP, 19) = Worksheets("Busi_Find").Cells(Close_3NM + 1, 11)
+          End If
+        Next Close_3NM
+    Next PP
+
+        Last_Day = Worksheets("Cash Flow").Cells(Day_Num + 10, 7)
+        For Close_3NM = 9 To 208
+         If Worksheets("Busi_Find").Cells(Close_3NM, 11) = Last_Day Then
+            Worksheets("Cash Flow").Cells(Day_Num + 11, 7) = Worksheets("Busi_Find").Cells(Close_3NM + 1, 11)
+            End If
+        Next Close_3NM
+
+        
+        
+    For PP = 11 To (10 + Day_Num)       'ZCR(FWD) '21.12월 수정(busi_find는 런던/뉴욕기준 cash flow는 런던/뉴욕/서울기준 날짜 찍으므로 두 날짜사이에 두개의 이자지급일 가능 #재수정: 직후 만기 활용
+        If Worksheets("Cash Flow").Cells(PP, 7) <> 0 Then
+   '      If Worksheets("Cash Flow").Cells(PP, 7) <> Worksheets("Cash Flow").Cells(PP + 1, 7) Then
+           Worksheets("Cash Flow").Cells(PP, 8) = Application.WorksheetFunction.Round(Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(PP, 7), Worksheets("Busi_Find").Range("K9:R208"), 8, False) _
+                          + (Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(PP, 19), Worksheets("Busi_Find").Range("K9:R208"), 8, False) _
+                          - Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(PP, 7), Worksheets("Busi_Find").Range("K9:R208"), 8, False)) _
+                          * (Worksheets("Cash Flow").Cells(PP, 3) - Worksheets("Cash Flow").Cells(PP, 7)) / (Worksheets("Cash Flow").Cells(PP, 19) - Worksheets("Cash Flow").Cells(PP, 7)), 10)
+   '      Else: Worksheets("Cash Flow").Cells(PP, 8) = Application.WorksheetFunction.Round(Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(PP, 7), Worksheets("Busi_Find").Range("K9:R208"), 8, False) _
+   '                       + (Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(PP + 2, 7), Worksheets("Busi_Find").Range("K9:R208"), 8, False) _
+   '                       - Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Cells(PP, 7), Worksheets("Busi_Find").Range("K9:R208"), 8, False)) _
+   '                       * (Worksheets("Cash Flow").Cells(PP, 3) - Worksheets("Cash Flow").Cells(PP, 7)) / (Worksheets("Cash Flow").Cells(PP + 2, 7) - Worksheets("Cash Flow").Cells(PP, 7)), 10)
+   '      End If
+        Else: Worksheets("Cash Flow").Cells(PP, 8) = ""
+        End If
+    Next PP
+    
+    Worksheets("Cash Flow").Range("G10").End(xlDown).Offset(-1, 1).Value = Worksheets("Busi_Find").Range("M9")
+ 
+
+    For PP = 11 To (10 + Day_Num) '21.12.30 추가
+     If Worksheets("Cash Flow").Cells(PP, 4) <> "-" Then
+        If Worksheets("Cash Flow").Cells(PP, 8) = "" Then
+          Worksheets("Cash Flow").Cells(PP, 8).Value = Worksheets("Cash Flow").Cells(PP + 1, 8)
+        End If
+    Exit For
+     End If
+    Next PP
+    
+      '선도금리-------t일이 산출일임을 주의
+           For D_N = 2 To Worksheets("Cash Flow").Range("C4") / 3
+               If Worksheets("Cash Flow").Cells(10 + D_N, 8) <> "" Then
+               Worksheets("Cash Flow").Cells(10 + D_N, 9) = 360 / (Worksheets("Cash Flow").Cells(10 + D_N, 3) - Worksheets("Cash Flow").Cells(9 + D_N, 3)) * ((1 + Worksheets("Cash Flow").Cells(10 + D_N, 8) * (Worksheets("Cash Flow").Cells(10 + D_N, 3) - Worksheets("Busi_Find").Range("c2")) / 360) / _
+               (1 + Worksheets("Cash Flow").Cells(9 + D_N, 8) * (Worksheets("Cash Flow").Cells(9 + D_N, 3) - Worksheets("Busi_Find").Range("c2")) / 360) - 1)
+                 Else: Worksheets("Cash Flow").Cells(10 + D_N, 9) = ""
+               End If
+           Next D_N
+
+
+    If Worksheets("Cash Flow").Range("H3") - Worksheets("Cash Flow").Range("C11") > 0 Then
+     For PP = 11 To (10 + Day_Num) '21.12.30 추가
+      If Worksheets("Cash Flow").Cells(PP, 4) <> "-" Then
+        Worksheets("Cash Flow").Range("I9") = Worksheets("Cash Flow").Cells(PP - 1, 3) '첫번째 이자교환일 적용시 사용불가
+     Exit For
+      End If
+     Next PP
+      Do
+      Worksheets("Cash Flow").Range("I9") = Worksheets("Cash Flow").Range("I9") - 1
+      Loop Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I9"), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g"
+                  
+      Worksheets("Cash Flow").Range("I8") = Worksheets("Cash Flow").Range("I9")
+      Do
+      Worksheets("Cash Flow").Range("I8") = Worksheets("Cash Flow").Range("I8") - 1
+      Loop Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I8"), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g"
+      Do
+      Worksheets("Cash Flow").Range("I8") = Worksheets("Cash Flow").Range("I8") + 1
+      Loop Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I8"), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g"
+      
+      For PP = 11 To (10 + Day_Num) '21.12.30 추가
+      If Worksheets("Cash Flow").Cells(PP, 4) <> "-" Then
+        Worksheets("Cash Flow").Cells(PP, 9) = Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I8"), Workbooks("금리 파라미터.xlsx").Worksheets("USD IRS").Range("A1").CurrentRegion, 2, False) / 100
+     Exit For
+      End If
+     Next PP
+       Else:
+      Worksheets("Cash Flow").Range("I8") = Workbooks("USD Multi NPV.xlsm").Worksheets("Trade Info").Cells(Multi_NPV + 1, 4)
+        Do Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I8"), Worksheets("Cal").Range("A1").CurrentRegion, 2) = "g"
+                  Worksheets("Cash Flow").Range("I8") = Worksheets("Cash Flow").Range("I8") - 1
+        Loop
+        Do
+        Worksheets("Cash Flow").Range("I8") = Worksheets("Cash Flow").Range("I8") + 1
+        Loop Until Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I8"), Worksheets("Cal").Range("A1").CurrentRegion, 4) = "g"
+        
+      Workbooks("USD Multi NPV.xlsm").Worksheets("Cash Flow").Range("I11").Select
+      Selection.Value = Application.WorksheetFunction.VLookup(Worksheets("Cash Flow").Range("I8"), Workbooks("금리 파라미터.xlsx").Worksheets("USD IRS").Range("A1").CurrentRegion, 2) / 100
+    End If
+
+End If
+'-----------------------------------------------------------------
+
+
+'고정이자금액 ACT/360와 30/360만
+    Dim Int_A As Integer
+    If Worksheets("Cash Flow").Range("E5") = "ACT/360" Then
+    
+     If Worksheets("Cash Flow").Range("E3") = "6M" Then
+        Worksheets("Cash Flow").Cells(12, 10) = Worksheets("Cash Flow").Cells(12, 6) * _
+        Worksheets("Cash Flow").Range("C5") * (Worksheets("Cash Flow").Cells(12, 3) - Worksheets("Cash Flow").Range("C3")) / 360
+        For Int_A = 3 To Worksheets("Cash Flow").Range("C4") / 3
+            If Worksheets("Cash Flow").Cells(Int_A + 10, 6) <> "" Then
+               Worksheets("Cash Flow").Cells(Int_A + 10, 10) = Worksheets("Cash Flow").Cells(Int_A + 10, 6) * _
+        Worksheets("Cash Flow").Range("C5") * (Worksheets("Cash Flow").Cells(Int_A + 10, 3) - Worksheets("Cash Flow").Cells(Int_A + 8, 3)) / 360
+            End If
+        Next Int_A
+     Else: Worksheets("Cash Flow").Cells(14, 10) = Worksheets("Cash Flow").Cells(14, 6) _
+        * Worksheets("Cash Flow").Range("C5") * (Worksheets("Cash Flow").Cells(14, 3) - Worksheets("Cash Flow").Range("C3")) / 360
+        For Int_A = 5 To Worksheets("Cash Flow").Range("C4") / 3
+            If Worksheets("Cash Flow").Cells(Int_A + 10, 6) <> "" Then
+               Worksheets("Cash Flow").Cells(Int_A + 10, 10) = Worksheets("Cash Flow").Cells(Int_A + 10, 6) * _
+        Worksheets("Cash Flow").Range("C5") * (Worksheets("Cash Flow").Cells(Int_A + 10, 3) - Worksheets("Cash Flow").Cells(Int_A + 6, 3)) / 360
+            End If
+        Next Int_A
+     End If
+     
+     
+    ElseIf Worksheets("Cash Flow").Range("E5") = "30/360" Then
+    
+     If Worksheets("Cash Flow").Range("E3") = 6 Then
+            If Worksheets("Cash Flow").Cells(12, 6) <> "" Then
+        Worksheets("Cash Flow").Cells(12, 10) = Worksheets("Cash Flow").Cells(12, 6) * _
+        Worksheets("Cash Flow").Range("C5") * (360 * (Year(Worksheets("Cash Flow").Cells(12, 3)) - _
+        Year(Worksheets("Cash Flow").Cells(3, 3))) + 30 * (Month(Worksheets("Cash Flow").Cells(12, 3)) - _
+        Month(Worksheets("Cash Flow").Cells(3, 3)) + (Day(Worksheets("Cash Flow").Cells(12, 3)) - _
+        Application.WorksheetFunction.Min((Day(Worksheets("Cash Flow").Cells(10, 3))), 30)))) / 360         '''''''''''''''''D2 검증 위에?
+            End If
+        For Int_A = 3 To Worksheets("Cash Flow").Range("C4") / 3
+            If Worksheets("Cash Flow").Cells(Int_A + 10, 6) <> "" Then
+        Worksheets("Cash Flow").Cells(Int_A + 10, 10) = Worksheets("Cash Flow").Cells(Int_A + 10, 6) * _
+        Worksheets("Cash Flow").Range("C5") * (360 * (Year(Worksheets("Cash Flow").Cells(Int_A + 10, 3)) - _
+        Year(Worksheets("Cash Flow").Cells(Int_A + 8, 3))) + 30 * (Month(Worksheets("Cash Flow").Cells(Int_A + 10, 3)) - _
+        Month(Worksheets("Cash Flow").Cells(Int_A + 8, 3))) + (Day(Worksheets("Cash Flow").Cells(Int_A + 10, 3)) - Worksheets("Cash Flow").Cells(Int_A + 10, 17) - _
+        Application.WorksheetFunction.Min((Day(Worksheets("Cash Flow").Cells(Int_A + 8, 3))), 30))) / 360
+            End If
+        Next Int_A
+     Else: Worksheets("Cash Flow").Cells(14, 10) = Worksheets("Cash Flow").Cells(14, 6) * _
+        Worksheets("Cash Flow").Range("C5") * (360 * (Year(Worksheets("Cash Flow").Cells(14, 3)) - _
+        Year(Worksheets("Cash Flow").Cells(3, 3))) + 30 * (Month(Worksheets("Cash Flow").Cells(14, 3)) - _
+        Month(Worksheets("Cash Flow").Cells(3, 3))) + (Day(Worksheets("Cash Flow").Cells(14, 3)) - _
+        Application.WorksheetFunction.Min((Day(Worksheets("Cash Flow").Cells(10, 3))), 30))) / 360
+        For Int_A = 5 To Worksheets("Cash Flow").Range("C4") / 3
+            If Worksheets("Cash Flow").Cells(Int_A + 10, 6) <> "" Then
+            Worksheets("Cash Flow").Cells(Int_A + 10, 10) = Worksheets("Cash Flow").Cells(Int_A + 10, 6) * _
+        Worksheets("Cash Flow").Range("C5") * (360 * (Year(Worksheets("Cash Flow").Cells(Int_A + 10, 3)) - _
+        Year(Worksheets("Cash Flow").Cells(Int_A + 6, 3))) + 30 * (Month(Worksheets("Cash Flow").Cells(Int_A + 10, 3)) - _
+        Month(Worksheets("Cash Flow").Cells(Int_A + 6, 3))) + (Day(Worksheets("Cash Flow").Cells(Int_A + 10, 3)) - Worksheets("Cash Flow").Cells(Int_A + 10, 18) - _
+        Application.WorksheetFunction.Min((Day(Worksheets("Cash Flow").Cells(Int_A + 6, 3))), 30))) / 360
+            End If
+        Next Int_A
+     End If
+    
+    End If
+    
+'변동이자금액 ACT/360만
+
+If Worksheets("Cash Flow").Range("e4") = 6 Then
+        If Worksheets("Cash Flow").Cells(12, 9) <> "" Then
+     Worksheets("Cash Flow").Cells(12, 11) = Worksheets("Cash Flow").Cells(12, 9) * _
+        Worksheets("Cash Flow").Range("C5") * (Worksheets("Cash Flow").Cells(12, 3) - Range("C3")) / 360
+        End If
+        
+      For Int_A = 4 To Worksheets("Cash Flow").Range("C4") / 3 Step 2
+        If Worksheets("Cash Flow").Cells(10 + Int_A, 9) <> "" Then
+         Worksheets("Cash Flow").Cells(10 + Int_A, 11) = Worksheets("Cash Flow").Cells(10 + Int_A, 9) * _
+         Worksheets("Cash Flow").Range("C5") * (Worksheets("Cash Flow").Cells(10 + Int_A, 3) - Worksheets("Cash Flow").Cells(8 + Int_A, 3)) / 360
+        End If
+      Next Int_A
+    
+Else:
+        If Worksheets("Cash Flow").Cells(11, 9) <> "" Then
+     Worksheets("Cash Flow").Cells(11, 11) = Worksheets("Cash Flow").Cells(11, 9) * _
+        Worksheets("Cash Flow").Range("C5") * (Worksheets("Cash Flow").Cells(11, 3) - Range("C3")) / 360
+        End If
+        
+      For Int_A = 2 To Worksheets("Cash Flow").Range("C4") / 3
+        If Worksheets("Cash Flow").Cells(10 + Int_A, 9) <> "" Then
+         Worksheets("Cash Flow").Cells(10 + Int_A, 11) = Worksheets("Cash Flow").Cells(10 + Int_A, 9) * _
+         Worksheets("Cash Flow").Range("C5") * (Worksheets("Cash Flow").Cells(10 + Int_A, 3) - Worksheets("Cash Flow").Cells(9 + Int_A, 3)) / 360
+        End If
+      Next Int_A
+End If
+
+
+'최종 NPV
+
+    Dim LAST_N As Integer
+       For LAST_N = 1 To Worksheets("Cash Flow").Range("C4") / 3
+         Worksheets("Cash Flow").Cells(10 + LAST_N, 12) = (Worksheets("Cash Flow").Cells(10 + LAST_N, 11) - Worksheets("Cash Flow").Cells(10 + LAST_N, 10))
+       Next LAST_N
+
+       Worksheets("Trade Info").Cells(Multi_NPV + 1, 30) = Application.WorksheetFunction.RoundDown(Application.WorksheetFunction.SumProduct(Worksheets("Cash Flow").Range("E11:E130"), Worksheets("Cash Flow").Range("L11:L130")), 0)
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''개별 전환시 미시행'''''''''''''''''''''''''''''''''''''''''''''''
+
+'Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow").Range(Worksheets("Cash Flow").Cells(11, 1), Worksheets("Cash Flow").Cells(130, 19)).ClearContents
+'With Worksheets("Cash Flow")
+'    .Range("O10").ClearContents
+'    .Range("P10").ClearContents
+'    .Range("C9").ClearContents
+'    .Range("I8").ClearContents
+'    .Range("I9").ClearContents
+'
+'End With
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+End If
+
+Next Multi_NPV
+
+
+With Application
+.ScreenUpdating = True
+.DisplayStatusBar = True
+.Calculation = xlCalculationAutomatic
+.EnableEvents = True
+.DisplayAlerts = True
+End With
+
+End Sub
+Sub NPV_Del()
+Workbooks("USD multi NPV.xlsm").Worksheets("Trade Info").Range(Worksheets("Trade Info").Cells(2, 30), Worksheets("Trade Info").Cells(102, 30)).ClearContents
+
+End Sub
+Sub CF_Del()
+Workbooks("USD multi NPV.xlsm").Worksheets("Cash Flow").Range(Worksheets("Cash Flow").Cells(11, 1), Worksheets("Cash Flow").Cells(400, 19)).ClearContents
+With Worksheets("Cash Flow")
+    .Range("O10").ClearContents
+    .Range("P10").ClearContents
+    .Range("C9").ClearContents
+    .Range("I8").ClearContents
+    .Range("I9").ClearContents
+End With
+
+End Sub
+
