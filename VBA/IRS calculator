@@ -1,0 +1,53 @@
+Option Explicit
+
+'Get Culture
+Private Function GetUICultureTag() As String
+    Dim shTemp As Worksheet
+    Dim sCulture As String
+    Dim sSheetName As String
+    
+    sCulture = Application.International(xlUICultureTag)
+    sSheetName = "RES_" + sCulture
+    
+    On Error Resume Next
+    Set shTemp = ThisWorkbook.Worksheets(sSheetName)
+    On Error GoTo 0
+    If shTemp Is Nothing Then sSheetName = GetFallbackTag(sCulture)
+    
+    GetUICultureTag = sSheetName
+End Function
+
+'Entry point for RibbonX button click
+Sub ShowATPDialog(control As IRibbonControl)
+    Application.Run ("fDialog")
+End Sub
+
+'Callback for RibbonX button label
+Sub GetATPLabel(control As IRibbonControl, ByRef label)
+    label = ThisWorkbook.Sheets(GetUICultureTag()).Range("RibbonCommand").Value
+End Sub
+
+'Callback for screentip
+Public Sub GetATPScreenTip(control As IRibbonControl, ByRef label)
+    label = ThisWorkbook.Sheets(GetUICultureTag()).Range("ScreenTip").Value
+End Sub
+
+'Callback for Super Tip
+Public Sub GetATPSuperTip(control As IRibbonControl, ByRef label)
+    label = ThisWorkbook.Sheets(GetUICultureTag()).Range("SuperTip").Value
+End Sub
+
+Public Sub GetGroupName(control As IRibbonControl, ByRef label)
+    label = ThisWorkbook.Sheets(GetUICultureTag()).Range("GroupName").Value
+End Sub
+
+'Check for Fallback Languages
+Public Function GetFallbackTag(szCulture As String) As String
+    If szCulture = "ca-ES" Or szCulture = "eu-ES" Or szCulture = "gl-ES" Then
+        GetFallbackTag = "RES_es-ES"
+    ElseIf szCulture = "nn-NO" Then
+        GetFallbackTag = "RES_nb-NO"
+    Else
+        GetFallbackTag = "RES_en-US"
+    End If
+End Function
