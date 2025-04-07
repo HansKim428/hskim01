@@ -1,0 +1,321 @@
+Option Explicit
+Option Base 1
+Sub Calculate()
+
+With Application
+.ScreenUpdating = False
+.DisplayStatusBar = False
+.Calculation = xlCalculationManual
+.EnableEvents = False
+.DisplayAlerts = False
+End With
+
+
+Dim pathname As String
+Dim WB1, WB2, WB3, WB4, WB5, WB6, WS1, WS2, WS3, WS4, WS5
+
+
+pathname = ThisWorkbook.Path
+Set WS1 = Workbooks("C-Factor.xlsm").Worksheets("산출")
+Set WS2 = Workbooks("C-Factor.xlsm").Worksheets("EAD")
+Set WS3 = Workbooks("C-Factor.xlsm").Worksheets("EFFN_KRW")
+Set WS4 = Workbooks("C-Factor.xlsm").Worksheets("EFFN_USD")
+Set WS5 = Workbooks("C-Factor.xlsm").Worksheets("규제자본액")
+
+Set WB1 = Workbooks("C-Factor.xlsm")
+
+Workbooks.Open Filename:=pathname & "\PR14_KRW.xlsx"
+Set WB2 = Workbooks("PR14_KRW.xlsx").Worksheets(1)
+Dim En_krw
+
+Dim En_krw_row, i As Long
+En_krw_row = WB2.Range("A8").CurrentRegion.Rows.Count - 5
+
+WB2.Range("A8").TextToColumns other:=True, otherchar:="-", TrailingMinusNumbers:=True
+
+ReDim En_krw(En_krw_row, 12)
+
+        WB2.Range(Cells(8, "F"), Cells(En_krw_row + 7, "F")).TextToColumns other:=True, otherchar:="-", TrailingMinusNumbers:=True
+
+        En_krw = Range(WB2.Cells(8, "F"), WB2.Cells(En_krw_row + 7, "Q"))
+        
+ReDim Preserve En_krw(En_krw_row, 14)
+
+     For i = 1 To En_krw_row
+        En_krw(i, 13) = WS1.Range("E2") * Application.Round(En_krw(i, 12) * (1 - Exp(-0.05 * Application.Round((En_krw(i, 1) - WB2.Range("A8")) / 365, 4))) / 0.05, 0) '감독델타를 제외한 D 계산 ### SD의 하한(10영업일) 미적용  ##365로 나누는게 맞는지 확인
+        Select Case (En_krw(i, 1) - WB2.Range("A8")) / 365  '### 365로 나누는게 맞는지 확인?
+            Case Is < 1
+                En_krw(i, 14) = 1
+            Case Is >= 5                            '###기존 점검파일과 부등호 동일하게 처리하였으나, 원문은 5년 초과임
+                En_krw(i, 14) = 3
+            Case Else
+                En_krw(i, 14) = 2
+       End Select
+     Next i
+
+
+WS3.Range("A2").Resize(En_krw_row, 14) = En_krw
+Workbooks("PR14_KRW.xlsx").Close
+
+'Erase
+
+
+
+Workbooks.Open Filename:=pathname & "\PR14_USD.xlsx"
+Set WB3 = Workbooks("PR14_USD.xlsx").Worksheets(1)
+Dim En_usd
+
+Dim En_usd_row As Long
+En_usd_row = WB3.Range("A8").CurrentRegion.Rows.Count - 5
+
+WB3.Range("A8").TextToColumns other:=True, otherchar:="-", TrailingMinusNumbers:=True
+
+ReDim En_usd(En_usd_row, 12)
+
+        WB3.Range(Cells(8, "F"), Cells(En_usd_row + 7, "F")).TextToColumns other:=True, otherchar:="-", TrailingMinusNumbers:=True
+        En_usd = Range(WB3.Cells(8, "F"), WB3.Cells(En_usd_row + 7, "Q"))
+
+ReDim Preserve En_usd(En_usd_row, 14)
+
+     For i = 1 To En_usd_row
+        En_usd(i, 13) = WS1.Range("E2") * Application.Round(En_usd(i, 12) * (1 - Exp(-0.05 * Application.Round((En_usd(i, 1) - WB3.Range("A8")) / 365, 4))) / 0.05, 1) '감독델타를 제외한 D 계산 ### SD의 하한(10영업일) 미적용  ##365로 나누는게 맞는지 확인
+        Select Case (En_usd(i, 1) - WB3.Range("A8")) / 365  '### 365로 나누는게 맞는지 확인?
+            Case Is < 1
+                En_usd(i, 14) = 1
+            Case Is >= 5                            '###기존 점검파일과 부등호 동일하게 처리하였으나, 원문은 5년 초과임
+                En_usd(i, 14) = 3
+            Case Else
+                En_usd(i, 14) = 2
+       End Select
+     Next i
+
+
+WS4.Range("A2").Resize(En_usd_row, 14) = En_usd
+Workbooks("PR14_USD.xlsx").Close
+
+
+
+Dim Ead_arr
+Dim Ead_row As Long
+
+Workbooks.Open Filename:=pathname & "\PA03_KRW.xlsx"
+Set WB3 = Workbooks("PA03_KRW.xlsx").Worksheets(1)
+Workbooks.Open Filename:=pathname & "\PA03_USD.xlsx"
+Set WB4 = Workbooks("PA03_USD.xlsx").Worksheets(1)
+
+Ead_row = WB3.Range("A7").CurrentRegion.Rows.Count - 4
+
+If Ead_row <> WB3.Range("A7").CurrentRegion.Rows.Count - 4 Then
+    MsgBox ("원화 및 달러 간 PA03 화면 차이")
+End If
+
+
+ReDim Ead_arr(Ead_row, 14)
+
+    For i = 1 To Ead_row
+       Ead_arr(i, 1) = WB3.Cells(i + 6, "B")
+       Ead_arr(i, 2) = WB3.Cells(i + 6, "C")
+       Ead_arr(i, 3) = -(WB3.Cells(i + 6, "H") + WB3.Cells(i + 6, "O")) - (WB4.Cells(i + 6, "H") + WB4.Cells(i + 6, "O")) * WS1.Range("B8")
+    Next i
+    
+Workbooks("PA03_KRW.xlsx").Close
+Workbooks("PA03_USD.xlsx").Close
+
+
+Workbooks.Open Filename:=pathname & "\PW09_KRW.xlsx"
+Set WB4 = Workbooks("PW09_KRW.xlsx").Worksheets(2)
+Workbooks.Open Filename:=pathname & "\PW09_USD.xlsx"
+Set WB5 = Workbooks("PW09_USD.xlsx").Worksheets(2)
+Workbooks.Open Filename:=pathname & "\PQ09.xlsx"
+Set WB6 = Workbooks("PQ09.xlsx").Worksheets(1)
+
+
+Dim Dps_krw, Dps_usd
+Dim rows_4, rows_5, j As Long
+rows_4 = WB4.Range("A5").CurrentRegion.Rows.Count - 2
+rows_5 = WB5.Range("A5").CurrentRegion.Rows.Count - 2
+
+ReDim Dps_krw(rows_4 / 5, 3)
+
+For j = 1 To rows_4
+    WB4.Cells(j + 4, "A").UnMerge
+        If WB4.Cells(j + 4, "A") = "" Then
+            WB4.Cells(j + 4, "A").Value = WB4.Cells(j + 4, "A").Offset(-1).Value
+        End If
+Next j
+
+For j = 1 To rows_4 / 5
+    Dps_krw(j, 1) = WB4.Cells(4 + 5 * j, 1)
+    Dps_krw(j, 2) = WB4.Cells(4 + 5 * j, 3)
+    Dps_krw(j, 3) = WB4.Cells(4 + 5 * j, 8)
+Next j
+
+
+For i = 1 To Ead_row
+    For j = 1 To rows_4 / 5
+        If Ead_arr(i, 1) = Dps_krw(j, 1) And Ead_arr(i, 2) = Dps_krw(j, 2) Then
+            Ead_arr(i, 4) = Dps_krw(j, 3)
+        Exit For
+        End If
+    Next j
+Next i
+
+
+
+ReDim Dps_usd(rows_5 / 4, 3)
+
+For j = 1 To rows_5
+    WB5.Cells(j + 4, "A").UnMerge
+        If WB5.Cells(j + 4, "A") = "" Then
+            WB5.Cells(j + 4, "A").Value = WB5.Cells(j + 4, "A").Offset(-1).Value
+        End If
+Next j
+
+For j = 1 To rows_5 / 4
+    Dps_usd(j, 1) = WB5.Cells(4 + 4 * j, 1)
+    Dps_usd(j, 2) = WB5.Cells(4 + 4 * j, 3)
+    Dps_usd(j, 3) = WB5.Cells(4 + 4 * j, 8)
+Next j
+    
+For i = 1 To Ead_row
+    For j = 1 To rows_5 / 4
+        If Ead_arr(i, 1) = Dps_usd(j, 1) And Ead_arr(i, 2) = Dps_usd(j, 2) Then
+            Ead_arr(i, 5) = Dps_usd(j, 3) * WS1.Range("B10")
+        Exit For
+        End If
+    Next j
+Next i
+    
+    
+For i = 1 To Ead_row
+    For j = 1 To Ead_row
+        If Ead_arr(i, 1) = Ead_arr(j, 1) Then
+            Ead_arr(i, 6) = Ead_arr(i, 6) + Ead_arr(j, 4) + Ead_arr(j, 5)
+        End If
+    Next j
+Next i
+
+For i = 1 To Ead_row
+    If Ead_arr(i, 6) <> 0 Then
+        Ead_arr(i, 7) = Application.VLookup(Ead_arr(i, 1), WB6.Range("A6").CurrentRegion, 2, False) * (Ead_arr(i, 4) + Ead_arr(i, 5)) / Ead_arr(i, 6)
+    Else: Ead_arr(i, 7) = Application.VLookup(Ead_arr(i, 1), WB6.Range("A6").CurrentRegion, 2, False)
+    End If
+    
+    Ead_arr(i, 8) = Ead_arr(i, 4) + Ead_arr(i, 5) + Ead_arr(i, 7)
+    Ead_arr(i, 12) = Application.Max(Ead_arr(i, 3) - Ead_arr(i, 8), 0)
+Next i
+
+Workbooks("PW09_KRW.xlsx").Save
+Workbooks("PW09_USD.xlsx").Save
+Workbooks("PW09_KRW.xlsx").Close
+Workbooks("PW09_USD.xlsx").Close
+
+
+Erase Dps_krw, Dps_usd
+
+
+Dim D_k1, D_k2, D_k3, D_u1, D_u2, D_u3 As Double
+
+For i = 1 To Ead_row
+    If Ead_arr(i, 2) = "-" Then
+        D_k1 = Application.SumIfs(Range(WS3.Cells(2, "M"), WS3.Cells(En_krw_row + 1, "M")), Range(WS3.Cells(2, "C"), WS3.Cells(En_krw_row + 1, "C")), Ead_arr(i, 1), Range(WS3.Cells(2, "N"), WS3.Cells(En_krw_row + 1, "N")), "=1") _
+                - Application.SumIfs(Range(WS3.Cells(2, "M"), WS3.Cells(En_krw_row + 1, "M")), Range(WS3.Cells(2, "H"), WS3.Cells(En_krw_row + 1, "H")), Ead_arr(i, 1), Range(WS3.Cells(2, "N"), WS3.Cells(En_krw_row + 1, "N")), "=1")
+        D_k2 = Application.SumIfs(Range(WS3.Cells(2, "M"), WS3.Cells(En_krw_row + 1, "M")), Range(WS3.Cells(2, "C"), WS3.Cells(En_krw_row + 1, "C")), Ead_arr(i, 1), Range(WS3.Cells(2, "N"), WS3.Cells(En_krw_row + 1, "N")), "=2") _
+                - Application.SumIfs(Range(WS3.Cells(2, "M"), WS3.Cells(En_krw_row + 1, "M")), Range(WS3.Cells(2, "H"), WS3.Cells(En_krw_row + 1, "H")), Ead_arr(i, 1), Range(WS3.Cells(2, "N"), WS3.Cells(En_krw_row + 1, "N")), "=2")
+        D_k3 = Application.SumIfs(Range(WS3.Cells(2, "M"), WS3.Cells(En_krw_row + 1, "M")), Range(WS3.Cells(2, "C"), WS3.Cells(En_krw_row + 1, "C")), Ead_arr(i, 1), Range(WS3.Cells(2, "N"), WS3.Cells(En_krw_row + 1, "N")), "=3") _
+                - Application.SumIfs(Range(WS3.Cells(2, "M"), WS3.Cells(En_krw_row + 1, "M")), Range(WS3.Cells(2, "H"), WS3.Cells(En_krw_row + 1, "H")), Ead_arr(i, 1), Range(WS3.Cells(2, "N"), WS3.Cells(En_krw_row + 1, "N")), "=3")
+        D_u1 = Application.SumIfs(Range(WS4.Cells(2, "M"), WS4.Cells(En_krw_row + 1, "M")), Range(WS4.Cells(2, "C"), WS4.Cells(En_krw_row + 1, "C")), Ead_arr(i, 1), Range(WS4.Cells(2, "N"), WS4.Cells(En_krw_row + 1, "N")), "=1") _
+                - Application.SumIfs(Range(WS4.Cells(2, "M"), WS4.Cells(En_krw_row + 1, "M")), Range(WS4.Cells(2, "H"), WS4.Cells(En_krw_row + 1, "H")), Ead_arr(i, 1), Range(WS4.Cells(2, "N"), WS4.Cells(En_krw_row + 1, "N")), "=1")
+        D_u2 = Application.SumIfs(Range(WS4.Cells(2, "M"), WS4.Cells(En_krw_row + 1, "M")), Range(WS4.Cells(2, "C"), WS4.Cells(En_krw_row + 1, "C")), Ead_arr(i, 1), Range(WS4.Cells(2, "N"), WS4.Cells(En_krw_row + 1, "N")), "=2") _
+                - Application.SumIfs(Range(WS4.Cells(2, "M"), WS4.Cells(En_krw_row + 1, "M")), Range(WS4.Cells(2, "H"), WS4.Cells(En_krw_row + 1, "H")), Ead_arr(i, 1), Range(WS4.Cells(2, "N"), WS4.Cells(En_krw_row + 1, "N")), "=2")
+        D_u3 = Application.SumIfs(Range(WS4.Cells(2, "M"), WS4.Cells(En_krw_row + 1, "M")), Range(WS4.Cells(2, "C"), WS4.Cells(En_krw_row + 1, "C")), Ead_arr(i, 1), Range(WS4.Cells(2, "N"), WS4.Cells(En_krw_row + 1, "N")), "=3") _
+                - Application.SumIfs(Range(WS4.Cells(2, "M"), WS4.Cells(En_krw_row + 1, "M")), Range(WS4.Cells(2, "H"), WS4.Cells(En_krw_row + 1, "H")), Ead_arr(i, 1), Range(WS4.Cells(2, "N"), WS4.Cells(En_krw_row + 1, "N")), "=3")
+    Else: D_k1 = Application.SumIfs(Range(WS3.Cells(2, "M"), WS3.Cells(En_krw_row + 1, "M")), Range(WS3.Cells(2, "C"), WS3.Cells(En_krw_row + 1, "C")), Ead_arr(i, 2), Range(WS3.Cells(2, "N"), WS3.Cells(En_krw_row + 1, "N")), "=1", Range(WS3.Cells(2, "E"), WS3.Cells(En_krw_row + 1, "E")), Ead_arr(i, 1)) _
+                - Application.SumIfs(Range(WS3.Cells(2, "M"), WS3.Cells(En_krw_row + 1, "M")), Range(WS3.Cells(2, "h"), WS3.Cells(En_krw_row + 1, "H")), Ead_arr(i, 2), Range(WS3.Cells(2, "N"), WS3.Cells(En_krw_row + 1, "N")), "=1", Range(WS3.Cells(2, "J"), WS3.Cells(En_krw_row + 1, "J")), Ead_arr(i, 1))
+          D_k2 = Application.SumIfs(Range(WS3.Cells(2, "M"), WS3.Cells(En_krw_row + 1, "M")), Range(WS3.Cells(2, "C"), WS3.Cells(En_krw_row + 1, "C")), Ead_arr(i, 2), Range(WS3.Cells(2, "N"), WS3.Cells(En_krw_row + 1, "N")), "=2", Range(WS3.Cells(2, "E"), WS3.Cells(En_krw_row + 1, "E")), Ead_arr(i, 1)) _
+                - Application.SumIfs(Range(WS3.Cells(2, "M"), WS3.Cells(En_krw_row + 1, "M")), Range(WS3.Cells(2, "h"), WS3.Cells(En_krw_row + 1, "H")), Ead_arr(i, 2), Range(WS3.Cells(2, "N"), WS3.Cells(En_krw_row + 1, "N")), "=2", Range(WS3.Cells(2, "J"), WS3.Cells(En_krw_row + 1, "J")), Ead_arr(i, 1))
+          D_k3 = Application.SumIfs(Range(WS3.Cells(2, "M"), WS3.Cells(En_krw_row + 1, "M")), Range(WS3.Cells(2, "C"), WS3.Cells(En_krw_row + 1, "C")), Ead_arr(i, 2), Range(WS3.Cells(2, "N"), WS3.Cells(En_krw_row + 1, "N")), "=3", Range(WS3.Cells(2, "E"), WS3.Cells(En_krw_row + 1, "E")), Ead_arr(i, 1)) _
+                - Application.SumIfs(Range(WS3.Cells(2, "M"), WS3.Cells(En_krw_row + 1, "M")), Range(WS3.Cells(2, "h"), WS3.Cells(En_krw_row + 1, "H")), Ead_arr(i, 2), Range(WS3.Cells(2, "N"), WS3.Cells(En_krw_row + 1, "N")), "=3", Range(WS3.Cells(2, "J"), WS3.Cells(En_krw_row + 1, "J")), Ead_arr(i, 1))
+          D_u1 = Application.SumIfs(Range(WS4.Cells(2, "M"), WS4.Cells(En_krw_row + 1, "M")), Range(WS4.Cells(2, "C"), WS4.Cells(En_krw_row + 1, "C")), Ead_arr(i, 2), Range(WS4.Cells(2, "N"), WS4.Cells(En_krw_row + 1, "N")), "=1", Range(WS4.Cells(2, "E"), WS4.Cells(En_krw_row + 1, "E")), Ead_arr(i, 1)) _
+                - Application.SumIfs(Range(WS4.Cells(2, "M"), WS4.Cells(En_krw_row + 1, "M")), Range(WS4.Cells(2, "h"), WS4.Cells(En_krw_row + 1, "H")), Ead_arr(i, 2), Range(WS4.Cells(2, "N"), WS4.Cells(En_krw_row + 1, "N")), "=1", Range(WS4.Cells(2, "J"), WS4.Cells(En_krw_row + 1, "J")), Ead_arr(i, 1))
+          D_u2 = Application.SumIfs(Range(WS4.Cells(2, "M"), WS4.Cells(En_krw_row + 1, "M")), Range(WS4.Cells(2, "C"), WS4.Cells(En_krw_row + 1, "C")), Ead_arr(i, 2), Range(WS4.Cells(2, "N"), WS4.Cells(En_krw_row + 1, "N")), "=2", Range(WS4.Cells(2, "E"), WS4.Cells(En_krw_row + 1, "E")), Ead_arr(i, 1)) _
+                - Application.SumIfs(Range(WS4.Cells(2, "M"), WS4.Cells(En_krw_row + 1, "M")), Range(WS4.Cells(2, "h"), WS4.Cells(En_krw_row + 1, "H")), Ead_arr(i, 2), Range(WS4.Cells(2, "N"), WS4.Cells(En_krw_row + 1, "N")), "=2", Range(WS4.Cells(2, "J"), WS4.Cells(En_krw_row + 1, "J")), Ead_arr(i, 1))
+          D_u3 = Application.SumIfs(Range(WS4.Cells(2, "M"), WS4.Cells(En_krw_row + 1, "M")), Range(WS4.Cells(2, "C"), WS4.Cells(En_krw_row + 1, "C")), Ead_arr(i, 2), Range(WS4.Cells(2, "N"), WS4.Cells(En_krw_row + 1, "N")), "=3", Range(WS4.Cells(2, "E"), WS4.Cells(En_krw_row + 1, "E")), Ead_arr(i, 1)) _
+                - Application.SumIfs(Range(WS4.Cells(2, "M"), WS4.Cells(En_krw_row + 1, "M")), Range(WS4.Cells(2, "h"), WS4.Cells(En_krw_row + 1, "H")), Ead_arr(i, 2), Range(WS4.Cells(2, "N"), WS4.Cells(En_krw_row + 1, "N")), "=3", Range(WS4.Cells(2, "J"), WS4.Cells(En_krw_row + 1, "J")), Ead_arr(i, 1))
+    End If
+    
+Ead_arr(i, 9) = Application.Round(((D_k1) ^ 2 + (D_k2) ^ 2 + (D_k3) ^ 2 + ((1.4 * (D_k2) * ((D_k1) + (D_k3)) + 0.6 * (D_k1) * (D_k3)))) ^ (1 / 2) _
+                + ((D_u1) ^ 2 + (D_u2) ^ 2 + (D_u3) ^ 2 + ((1.4 * (D_u2) * ((D_u1) + (D_u3)) + 0.6 * (D_u1) * (D_u3)))) ^ (1 / 2) * WS1.Range("B8"), 0)
+Ead_arr(i, 10) = Application.Round(Ead_arr(i, 9) * 0.005, 0)
+
+If Ead_arr(i, 10) <> 0 Then
+    Ead_arr(i, 11) = Application.Round(Application.Min(1, 0.05 + 0.95 * Exp((Ead_arr(i, 3) - Ead_arr(i, 8)) / 1.9 / Ead_arr(i, 10))), 4)
+Else: Ead_arr(i, 11) = 0
+End If
+    
+Ead_arr(i, 13) = Application.Round(Ead_arr(i, 11) * Ead_arr(i, 10), 0)
+Ead_arr(i, 14) = 1.4 * (Ead_arr(i, 12) + Ead_arr(i, 13))
+Next i
+
+
+WS2.Range("A2").Resize(Ead_row, 14) = Ead_arr
+
+WS1.Range("B13") = Application.Round(Application.Sum(Range(WS2.Cells(2, "N"), WS2.Cells(Rows.Count, "N").End(3))) * WS1.Range("B2") * WS1.Range("B3"), 0)
+           
+Dim C_factor As Double, N As Integer
+Dim PQ09_arr
+N = WB6.Range("A6").CurrentRegion.Rows.Count - 3    '회원수 + 1(합계열)
+ReDim PQ09_arr(N, 4)
+           
+For i = 1 To N
+    PQ09_arr(i, 1) = WB6.Cells(i + 5, 1)
+    PQ09_arr(i, 2) = Application.VLookup(PQ09_arr(i, 1), WB6.Range("A6").CurrentRegion, 2, False)
+Next i
+
+WS1.Range("B14") = WS1.Range("B13") / (WS1.Range("B7") + WB6.Cells(WB6.Rows.Count, 2).End(xlUp))
+
+C_factor = Application.Round(WS1.Range("B14"), 5)
+
+For i = 1 To N
+    PQ09_arr(i, 3) = Application.RoundDown(PQ09_arr(i, 2) * C_factor, 0)
+    PQ09_arr(i, 4) = Application.RoundDown(PQ09_arr(i, 3) * 12.5, 0)
+Next i
+
+WS5.Range("a2").Resize(N, 4) = PQ09_arr
+
+
+Workbooks("PQ09.xlsx").Close
+Erase Ead_arr, En_krw, En_usd, PQ09_arr
+
+
+
+With Application
+.ScreenUpdating = True
+.DisplayStatusBar = True
+.Calculation = xlCalculationAutomatic
+.EnableEvents = True
+.DisplayAlerts = True
+End With
+
+End Sub
+Sub Del()
+Dim WS1, WS2, WS3, WS4, WS5
+
+Set WS1 = Workbooks("C-Factor.xlsm").Worksheets("산출")
+Set WS2 = Workbooks("C-Factor.xlsm").Worksheets("EAD")
+Set WS3 = Workbooks("C-Factor.xlsm").Worksheets("EFFN_KRW")
+Set WS4 = Workbooks("C-Factor.xlsm").Worksheets("EFFN_USD")
+Set WS5 = Workbooks("C-Factor.xlsm").Worksheets("규제자본액")
+    
+With WS1
+.Range("B13").ClearContents
+.Range("B14").ClearContents
+End With
+
+WS2.Range(WS2.Cells(2, "a"), WS2.Cells(100, "N")).ClearContents
+WS3.Range(WS3.Cells(2, "a"), WS3.Cells(150000, "N")).ClearContents
+WS4.Range(WS4.Cells(2, "a"), WS4.Cells(1000, "N")).ClearContents
+WS5.Range(WS5.Cells(2, "a"), WS5.Cells(100, "d")).ClearContents
+
+End Sub
+
