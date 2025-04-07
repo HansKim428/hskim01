@@ -18,4 +18,5 @@ Implement portfolio compression using linear programming, optimizing for minimal
 Apply offsetting and contract adjustment methods to reduce portfolio size, reflecting more practical, rule-based compression strategies.</br>
 </br>
 **Applications**</br>
+</br>
 These tools support the design and evaluation of portfolio compression strategies, enabling institutions to streamline operations and reduce exposure while maintaining risk integrity. The modular design allows for customization and testing across different types of portfolios and compression objectives.
